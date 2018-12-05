@@ -1,6 +1,9 @@
 import http.server
 import io
 import sys
+import webdavdlib.filesystems
+
+VERSION = "0.1"
 
 class WriteBuffer:
     def __init__(self, w, debug=True):
@@ -25,15 +28,23 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
 
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
+    def __init__(self, request, client_address, server):
+        http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+        self.server_version = "orbit-webdavd/%s" % (VERSION,)
+        self.fs = webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
+        self.close_connection = False
+        self.protocol_version = "HTTP/1.1"
+
+
     def do_HEAD(self):
-        print("do_HEAD");
+        print("HEAD ", self.path)
         pass
 
     def do_GET(self):
-        print("do_GET");
+        print("GET ", self.path)
 
     def do_OPTIONS(self):
-        self.log_message("do_OPTIONS");
+        print(self.request_version, " OPTIONS ", self.path)
         self.send_response(200, self.server_version)
         self.send_header('Allow',
                          'GET, HEAD, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPATCH, MKCOL, LOCK, UNLOCK, MOVE, COPY')
@@ -44,15 +55,14 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_PROPFIND(self):
-        print("do_PROPFIND")
-        if(self.headers.get('Content-Length')):
-            print(self.rfile.read(int(self.headers.get('Content-Length'))))
+        print(self.request_version, " PROPFIND ", self.path, " Depth: ", self.headers.get('Depth'))
 
-        self.send_response(207, 'Multi-Status')  # Multi-Status
-        self.send_header('Content-Type', 'text/xml')
-        self.send_header("charset", '"utf-8"')
+        if self.headers.get('Content-Length'):
+            data = self.rfile.read(int(self.headers.get('Content-Length')))
 
-        w = WriteBuffer(self.wfile, True)
+
+
+        w = WriteBuffer(self.wfile, False)
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
@@ -84,37 +94,45 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
         w.write("</D:multistatus>\r\n")
-        self.send_header('Content-Length', str(w.getSize()))
+
+        self.send_response(207, "Multi-Status")  # Multi-Status
+        self.send_header("Content-Type", "text/xml")
+        self.send_header("Charset", "utf-8")
+        self.send_header("Content-Length", str(w.getSize()))
         self.end_headers()
         w.flush()
-        pass
+
+
 
     def do_DELETE(self):
-        print("do_DELETE");
+        print(self.request_version, " DELETE ", self.path)
         pass
 
     def do_MKCOL(self):
-        print("do_MKCOL");
+        print(self.request_version, " MKCOL ", self.path)
         pass
 
     def do_MOVE(self):
-        print("do_MOVE");
+        print(self.request_version, " MOVE ", self.path)
         pass
 
     def do_COPY(self):
-        print("do_COPY");
+        print(self.request_version, " COPY ", self.path)
         pass
 
     def do_LOCK(self):
-        print("do_LOCK");
+        print(self.request_version, " LOCK ", self.path)
         pass
 
     def do_UNLOCK(self):
-        print("do_UNLOCK");
+        print(self.request_version, " UNLOCK ", self.path)
         pass
 
     def do_PUT(self):
-        print("do_PUT");
+        print(self.request_version, " PUT ", self.path)
+        pass
+
+    def log_message(self, format, *args):
         pass
 
 

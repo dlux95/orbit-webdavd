@@ -1,16 +1,17 @@
 class Property(object):
     name = "undefined"
+
     def __init__(self, value):
         self.value = value
 
-    def getName(self):
+    def get_name(self):
         return self.__class__.name
 
-    def getValue(self):
+    def get_value(self):
         return self.value
 
-    def getXML(self):
-        return "<D:%s>%s</D:%s>" % (self.getName(), self.getValue(), self.getName())
+    def get_xml(self):
+        return "<D:%s>%s</D:%s>" % (self.get_name(), self.get_value(), self.get_name())
 
 
 ### Basic Properties:
@@ -23,14 +24,18 @@ class Property(object):
 class NameProperty(Property):
     name = "name"
 
+
 class ContentTypeProperty(Property):
     name = "getcontenttype"
+
 
 class ContentLengthProperty(Property):
     name = "getcontentlength"
 
+
 class CreationDateProperty(Property):
     name = "creationdate"
+
 
 class IsCollectionProperty(Property):
     name = "iscollection"
