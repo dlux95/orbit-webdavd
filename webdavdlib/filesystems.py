@@ -1,15 +1,15 @@
 
-class WebDAVFilesystem(object):
+class Filesystem(object):
     pass
 
-class HomeFilesystem(WebDAVFilesystem):
+class HomeFilesystem(Filesystem):
     pass
 
-class DirectoryFilesystem(WebDAVFilesystem):
+class DirectoryFilesystem(Filesystem):
     pass
 
-class MySQLFilesystem(WebDAVFilesystem):
+class MySQLFilesystem(Filesystem):
     pass
 
-class RedisFileSystem(WebDAVFilesystem):
+class RedisFileSystem(Filesystem):
     pass

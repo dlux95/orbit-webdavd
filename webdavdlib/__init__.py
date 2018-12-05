@@ -8,7 +8,7 @@ class WebDAVResource(object):
     def addProperty(self, prop):
         if any(p.__class__ == prop.__class__ for p in self._properties):
             print("Duplicate property 1:", prop)
-        else
+        else:
             self._properties.append(prop)
         return self
 
