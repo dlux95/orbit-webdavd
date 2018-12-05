@@ -9,6 +9,9 @@ class Property(object):
     def getValue(self):
         return self.value
 
+    def getXML(self):
+        return "<D:%s>%s</D:%s>" % (self.getName(), self.getValue(), self.getName())
+
 
 ### Basic Properties:
 # name
