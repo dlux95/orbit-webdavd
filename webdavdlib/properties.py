@@ -1,3 +1,5 @@
+from time import time, timezone, strftime, localtime, gmtime
+
 class Property(object):
     name = "undefined"
 
@@ -10,8 +12,8 @@ class Property(object):
     def get_value(self):
         return self.value
 
-    def get_xml(self):
-        return "<D:%s>%s</D:%s>" % (self.get_name(), self.get_value(), self.get_name())
+    def to_xml(self):
+        return "<D:%s>%s</D:%s>\n" % (self.get_name(), self.get_value(), self.get_name())
 
 
 ### Basic Properties:
@@ -35,6 +37,9 @@ class ContentLengthProperty(Property):
 
 class CreationDateProperty(Property):
     name = "creationdate"
+
+    def get_value(self):
+        return unixdate2iso8601(self.value)
 
 
 class IsCollectionProperty(Property):
@@ -77,8 +82,14 @@ class ContentLanguageProperty(Property):
 class LastAccessedProperty(Property):
     name = "lastaccessed"
 
+    def get_value(self):
+        return unixdate2httpdate(self.value)
+
 class LastModifiedProperty(Property):
     name = "getlastmodified"
+
+    def get_value(self):
+        return unixdate2httpdate(self.value)
 
 class IsStructuredDocumentProperty(Property):
     name = "isstructureddocument"
@@ -94,3 +105,15 @@ class IsRootProperty(Property):
 
 class ResourceTypeProperty(Property):
     name = "resourcetype"
+
+class EtagProperty(Property):
+    name = "getetag"
+
+
+def unixdate2iso8601(d):
+    tz = timezone / 3600 # can it be fractional?
+    tz = '%+03d' % tz
+    return strftime('%Y-%m-%dT%H:%M:%S', localtime(d)) + tz + ':00'
+
+def unixdate2httpdate(d):
+    return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))
