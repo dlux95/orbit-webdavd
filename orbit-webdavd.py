@@ -84,7 +84,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
-        result = self.fs.get_resources(pathlib.Path(self.path).relative_to("/"), depth, [])
+        result = self.fs.propfind(pathlib.Path(self.path).relative_to("/"), depth, [])
         if result:
             if not isinstance(result, list):
                 result = [result]
@@ -100,18 +100,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                         continue
                     w.write(p.to_xml())
 
-                w.write("""<D:supportedlock>
-                <D:lockentry>
-                <D:lockscope><D:exclusive/></D:lockscope>
-                <D:locktype><D:write/></D:locktype>
-                </D:lockentry>
-                <D:lockentry>
-                <D:lockscope><D:shared/></D:lockscope>
-                <D:locktype><D:write/></D:locktype>
-                </D:lockentry>
-                </D:supportedlock>
-                <D:lockdiscovery/>
-                """)
+                w.write("<D:lockdiscovery/>\n")
 
                 w.write("</D:prop>\n")
                 w.write("<D:status>HTTP/1.1 200 OK</D:status>\n")

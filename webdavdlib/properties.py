@@ -109,6 +109,23 @@ class ResourceTypeProperty(Property):
 class EtagProperty(Property):
     name = "getetag"
 
+class SupportedLockProperty:
+    name = "supportedlock"
+
+    def to_xml(self):
+        return "<D:supportedlock>\n" \
+               "<D:lockentry>\n" \
+               "<D:lockscope><D:exclusive/></D:lockscope>\n" \
+               "<D:locktype><D:write/></D:locktype>\n" \
+               "</D:lockentry>\n" \
+               "<D:lockentry>\n" \
+               "<D:lockscope><D:shared/></D:lockscope>\n" \
+               "<D:locktype><D:write/></D:locktype>\n" \
+               "</D:lockentry>\n" \
+               "</D:supportedlock>\n"
+
+
+
 
 def unixdate2iso8601(d):
     tz = timezone / 3600 # can it be fractional?
