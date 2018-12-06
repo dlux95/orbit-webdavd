@@ -3,6 +3,7 @@ import io
 import sys
 import webdavdlib.filesystems
 from webdavdlib.properties import *
+import pathlib
 
 VERSION = "0.1"
 
@@ -79,15 +80,11 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
 
-
-
-
-
         w = WriteBuffer(self.wfile, False)
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
-        result = self.fs.get_resources(self.path, depth)
+        result = self.fs.get_resources(pathlib.Path(self.path).relative_to("/"), depth, [])
         if result:
             if not isinstance(result, list):
                 result = [result]

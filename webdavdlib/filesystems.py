@@ -17,55 +17,50 @@ class DirectoryFilesystem(Filesystem):
     def __init__(self, basepath):
         self.basepath = pathlib.Path(basepath)
 
-    def get_resources(self, path, depth=0, reslist=None):
-        if reslist == None:
-            reslist = []
+        if not self.basepath.is_dir():
+            raise webdavdlib.exceptions.NoSuchFileException()
 
-        try:
-            path = path.lstrip("/")
-        except:
-            pass
-
-
-        realpath = (self.basepath / path).resolve()
-        #print("get_resource(", path, ") = ", realpath, " base", self.basepath)
-
-        if not self.basepath in realpath.parents and not self.basepath == realpath:
-            raise webdavdlib.exceptions.ForbiddenException
-
-        if not realpath.exists():
-            return None
-
-        if realpath.is_file():
+    def create_resource(self, fullpath, basepath):
+        if fullpath.is_file():
             res = webdavdlib.WebDAVResource()
             res \
-                .add_property(HrefProperty("/" + str(pathlib.Path(path).as_posix()))) \
-                .add_property(ContentLengthProperty(realpath.stat().st_size)) \
-                .add_property(LastAccessedProperty(realpath.stat().st_atime)) \
-                .add_property(LastModifiedProperty(realpath.stat().st_mtime)) \
-                .add_property(CreationDateProperty(realpath.stat().st_ctime)) \
+                .add_property(HrefProperty("/" + str(fullpath.relative_to(basepath).as_posix()))) \
+                .add_property(ContentLengthProperty(fullpath.stat().st_size)) \
+                .add_property(LastAccessedProperty(fullpath.stat().st_atime)) \
+                .add_property(LastModifiedProperty(fullpath.stat().st_mtime)) \
+                .add_property(CreationDateProperty(fullpath.stat().st_ctime)) \
                 .add_property(ResourceTypeProperty("")) \
-                .add_property(EtagProperty("\""+str(random.getrandbits(64))+"\""))
+                .add_property(EtagProperty("\"" + str(random.getrandbits(64)) + "\""))
 
-            reslist.append(res)
+            return res
 
-        if realpath.is_dir():
+        if fullpath.is_dir():
             res = webdavdlib.WebDAVResource()
             res \
-                .add_property(HrefProperty("/" + str(pathlib.Path(path).as_posix()))) \
+                .add_property(HrefProperty("/" + str(fullpath.relative_to(basepath).as_posix()))) \
                 .add_property(ResourceTypeProperty("<D:collection/>")) \
-                .add_property(LastAccessedProperty(realpath.stat().st_atime)) \
-                .add_property(LastModifiedProperty(realpath.stat().st_mtime)) \
-                .add_property(CreationDateProperty(realpath.stat().st_ctime)) \
+                .add_property(LastAccessedProperty(fullpath.stat().st_atime)) \
+                .add_property(LastModifiedProperty(fullpath.stat().st_mtime)) \
+                .add_property(CreationDateProperty(fullpath.stat().st_ctime)) \
                 .add_property(EtagProperty("\""+str(random.getrandbits(64))+"\""))
 
-            reslist.append(res)
+            return res
+
+        return None
+
+    def get_resources(self, path, depth=0, reslist=None):
+        print("get_resources(",path,")")
+
+        realpath = self.basepath / path
+
+        reslist.append(self.create_resource(realpath, self.basepath))
 
         if depth > 0:
             if realpath.is_dir():
-                for subpath  in realpath.iterdir():
-                    self.get_resources((pathlib.Path(path) / subpath.name).as_posix(), depth-1, reslist)
+                for subpath in realpath.iterdir():
+                    self.get_resources(subpath.relative_to(self.basepath), depth-1, reslist)
 
+        reslist =  [i for i in reslist if i is not None]
         return reslist
 
 

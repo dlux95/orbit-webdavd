@@ -5,3 +5,6 @@ class MiscException(Exception):
 
 class ForbiddenException(Exception):
     pass
+
+class NoSuchFileException(Exception):
+    pass
