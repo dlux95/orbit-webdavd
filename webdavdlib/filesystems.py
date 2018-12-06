@@ -9,6 +9,9 @@ class Filesystem(object):
     def propfind(self, path, depth):
         raise NotImplementedError()
 
+    def mkcol(self, path):
+        raise NotImplementedError()
+
 
 class HomeFilesystem(Filesystem):
     pass
@@ -37,22 +40,26 @@ class DirectoryFilesystem(Filesystem):
             res.add_property(ContentLengthProperty(fullpath.stat().st_size))
             res.add_property(ResourceTypeProperty(""))
 
-            #etag = hashlib.sha256()
-            #etag.update(fullpath.stat().st_size)
-            #etag.update(fullpath.stat().st_mttime)
+            etag = hashlib.sha256()
+            etag.update(bytes(str(fullpath.stat().st_size), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
+            etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
 
-            res.add_property(EtagProperty("\"" + str(random.getrandbits(64)) + "\""))
+            res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
 
         if fullpath.is_dir():
             res.add_property(ResourceTypeProperty("<D:collection/>"))
-            res.add_property(EtagProperty("\""+str(random.getrandbits(64))+"\""))
+
+            etag = hashlib.sha256()
+            etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
+            etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
+
+            res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
 
 
         return res
 
     def propfind(self, path, depth=0, reslist=None):
-        print("get_resources(",path,")")
-
         realpath = self.basepath / path
 
         reslist.append(self.create_resource(realpath, self.basepath))
@@ -64,6 +71,18 @@ class DirectoryFilesystem(Filesystem):
 
         reslist =  [i for i in reslist if i is not None]
         return reslist
+
+    def mkcol(self, path):
+        realpath = self.basepath / path
+
+        try:
+            realpath.mkdir(parents=False, exist_ok=False)
+        except FileNotFoundError:
+            return 409
+        except FileExistsError:
+            return 409
+
+        return 201
 
 
 

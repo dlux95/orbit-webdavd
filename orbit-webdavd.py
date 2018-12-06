@@ -4,6 +4,7 @@ import sys
 import webdavdlib.filesystems
 from webdavdlib.properties import *
 import pathlib
+import urllib.parse
 
 VERSION = "0.1"
 
@@ -80,11 +81,11 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
 
-        w = WriteBuffer(self.wfile, False)
+        w = WriteBuffer(self.wfile, True)
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
-        result = self.fs.propfind(pathlib.Path(self.path).relative_to("/"), depth, [])
+        result = self.fs.propfind(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
         if result:
             if not isinstance(result, list):
                 result = [result]
@@ -120,8 +121,18 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_MKCOL(self):
-        print(self.request_version, " MKCOL ", self.path)
-        pass
+        data = self.get_data()
+        print(self.request_version, " MKCOL ", self.path, " Data:", len(data))
+
+        result = self.fs.mkcol(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+
+        if result == 201:
+            self.send_response(201, "Created")  # Multi-Status
+            self.end_headers()
+
+        if result == 409:
+            self.send_response(209, "Conflict")  # Multi-Status
+            self.end_headers()
 
     def do_MOVE(self):
         print(self.request_version, " MOVE ", self.path)

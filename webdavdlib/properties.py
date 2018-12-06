@@ -1,9 +1,10 @@
 from time import time, timezone, strftime, localtime, gmtime
+from urllib.parse import quote,unquote
 
 class Property(object):
     name = "undefined"
 
-    def __init__(self, value):
+    def __init__(self, value=None):
         self.value = value
 
     def get_name(self):
@@ -66,6 +67,9 @@ class ParentNameProperty(Property):
 
 class HrefProperty(Property):
     name = "href"
+
+    def get_value(self):
+        return quote(self.value)
 
 class IsHiddenProperty(Property):
     name = "ishidden"
