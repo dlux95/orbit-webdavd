@@ -4,12 +4,16 @@ import webdavdlib
 from webdavdlib.properties import *
 import random
 import hashlib
+import os
 
 class Filesystem(object):
     def propfind(self, path, depth):
         raise NotImplementedError()
 
     def mkcol(self, path):
+        raise NotImplementedError()
+
+    def move(self, path, destination):
         raise NotImplementedError()
 
 
@@ -80,6 +84,17 @@ class DirectoryFilesystem(Filesystem):
         except FileNotFoundError:
             return 409
         except FileExistsError:
+            return 409
+
+        return 201
+
+    def move(self, path, destination):
+        realpath = self.basepath / path
+        realdestination = self.basepath / destination
+
+        try:
+            os.rename(realpath, realdestination)
+        except OSError:
             return 409
 
         return 201

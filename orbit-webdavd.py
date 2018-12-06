@@ -51,6 +51,13 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         return depth
 
+    def get_destination(self):
+        destination = ""
+        if self.headers.get("Destination"):
+            destination = urllib.parse.urlparse(self.headers.get("Destination")).path
+
+        return destination
+
     def get_data(self):
         data = ""
         if self.headers.get('Content-Length'):
@@ -81,7 +88,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
 
-        w = WriteBuffer(self.wfile, True)
+        w = WriteBuffer(self.wfile, False)
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
@@ -91,7 +98,6 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 result = [result]
 
             for res in result:
-                print(res)
                 w.write("<D:response>\n")
                 w.write("<D:href>%s</D:href>\n" % res.get_property(HrefProperty).get_value())
                 w.write("<D:propstat>\n")
@@ -135,8 +141,18 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_MOVE(self):
-        print(self.request_version, " MOVE ", self.path)
-        pass
+        destination = self.get_destination()
+        print(self.request_version, " MOVE ", self.path, " to ", destination)
+
+        result = self.fs.move(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
+
+        if result == 201:
+            self.send_response(201, "Created")  # Multi-Status
+            self.end_headers()
+
+        if result == 409:
+            self.send_response(209, "Conflict")  # Multi-Status
+            self.end_headers()
 
     def do_COPY(self):
         print(self.request_version, " COPY ", self.path)
