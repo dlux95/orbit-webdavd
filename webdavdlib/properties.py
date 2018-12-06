@@ -109,7 +109,7 @@ class ResourceTypeProperty(Property):
 class EtagProperty(Property):
     name = "getetag"
 
-class SupportedLockProperty:
+class SupportedLockProperty(Property):
     name = "supportedlock"
 
     def to_xml(self):
@@ -123,6 +123,12 @@ class SupportedLockProperty:
                "<D:locktype><D:write/></D:locktype>\n" \
                "</D:lockentry>\n" \
                "</D:supportedlock>\n"
+
+class LockDiscoveryProperty(Property):
+    name = "lockdiscovery"
+
+    def to_xml(self):
+        return "<D:lockdiscovery/>\n"
 
 
 

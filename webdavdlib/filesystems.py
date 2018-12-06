@@ -31,6 +31,7 @@ class DirectoryFilesystem(Filesystem):
         res.add_property(LastModifiedProperty(fullpath.stat().st_mtime))
         res.add_property(CreationDateProperty(fullpath.stat().st_ctime))
         res.add_property(SupportedLockProperty())
+        res.add_property(LockDiscoveryProperty())
 
         if fullpath.is_file():
             res.add_property(ContentLengthProperty(fullpath.stat().st_size))

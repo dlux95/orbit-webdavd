@@ -100,39 +100,10 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                         continue
                     w.write(p.to_xml())
 
-                w.write("<D:lockdiscovery/>\n")
-
                 w.write("</D:prop>\n")
                 w.write("<D:status>HTTP/1.1 200 OK</D:status>\n")
                 w.write("</D:propstat>\n")
                 w.write("</D:response>\n")
-        # w.write("""
-        # <D:response>
-        # <D:href>/</D:href>
-        # <D:propstat>
-        # <D:prop>
-        # <D:resourcetype><D:collection/></D:resourcetype>
-        # <D:creationdate>2018-12-03T12:20:56Z</D:creationdate>
-        # <D:getlastmodified>Mon, 03 Dec 2018 12:20:56 GMT</D:getlastmodified>
-        # <D:getetag>"1000-57c1d2e50e5b2"</D:getetag>
-        # <D:supportedlock>
-        # <D:lockentry>
-        # <D:lockscope><D:exclusive/></D:lockscope>
-        # <D:locktype><D:write/></D:locktype>
-        # </D:lockentry>
-        # <D:lockentry>
-        # <D:lockscope><D:shared/></D:lockscope>
-        # <D:locktype><D:write/></D:locktype>
-        # </D:lockentry>
-        # </D:supportedlock>
-        # <D:lockdiscovery/>
-        # </D:prop>
-        # <D:status>HTTP/1.1 200 OK</D:status>
-        # </D:propstat>
-        # </D:response>
-        # """)
-
-
         w.write("</D:multistatus>\r\n")
 
         self.send_response(207, "Multi-Status")  # Multi-Status
