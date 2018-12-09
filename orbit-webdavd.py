@@ -5,6 +5,7 @@ import webdavdlib.filesystems
 from webdavdlib.properties import *
 import pathlib
 import urllib.parse
+from webdavdlib.exceptions import *
 
 VERSION = "0.1"
 
@@ -67,10 +68,39 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_HEAD(self):
         print("HEAD ", self.path)
-        pass
+
+        try:
+            resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        except NoSuchFileException:
+            self.send_response(404, "Not found")
+            self.end_headers()
+        except ForbiddenException(403, "Forbidden"):
+            self.send_response(403, "Forbidden")
+            self.end_headers()
+
+        self.send_response(200, "Ok")
+        self.send_header("Content-Length", str(len(resdata)))
+        self.end_headers()
 
     def do_GET(self):
         print("GET ", self.path)
+
+        try:
+            resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        except NoSuchFileException:
+            self.send_response(404, "Not found")
+            self.end_headers()
+        except ForbiddenException(403, "Forbidden"):
+            self.send_response(403, "Forbidden")
+            self.end_headers()
+
+        self.send_response(200, "Ok")
+        self.send_header("Content-Length", str(len(resdata)))
+        self.end_headers()
+
+        self.wfile.write(resdata)
+
+
 
     def do_OPTIONS(self):
         print(self.request_version, " OPTIONS ", self.path)
@@ -167,8 +197,14 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_PUT(self):
+        data = self.get_data()
         print(self.request_version, " PUT ", self.path)
-        pass
+
+        self.fs.put(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
+
+        self.send_response(200, "Ok")
+        self.end_headers()
+
 
     def log_message(self, format, *args):
         pass

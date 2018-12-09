@@ -1,10 +1,21 @@
 import pathlib
 import webdavdlib.exceptions
+from webdavdlib.exceptions import *
 import webdavdlib
 from webdavdlib.properties import *
 import random
 import hashlib
 import os
+
+def getdirsize(path):
+    total_size = 0
+    start_path = path
+    for path, dirs, files in os.walk(start_path):
+        for f in files:
+            fp = os.path.join(path, f)
+            total_size += os.path.getsize(fp)
+
+    return total_size
 
 class Filesystem(object):
     def propfind(self, path, depth):
@@ -14,6 +25,12 @@ class Filesystem(object):
         raise NotImplementedError()
 
     def move(self, path, destination):
+        raise NotImplementedError()
+
+    def get(self, path):
+        raise NotImplementedError()
+
+    def put(self, path, data):
         raise NotImplementedError()
 
 
@@ -47,16 +64,26 @@ class DirectoryFilesystem(Filesystem):
             etag = hashlib.sha256()
             etag.update(bytes(str(fullpath.stat().st_size), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_atime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_ctime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_ino), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_file_attributes), "utf-8"))
             etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
-
+            print("\t", fullpath, " Etag: ", etag.hexdigest())
             res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
 
         if fullpath.is_dir():
             res.add_property(ResourceTypeProperty("<D:collection/>"))
 
             etag = hashlib.sha256()
+            etag.update(bytes(str(getdirsize(fullpath)), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_atime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_ctime), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_ino), "utf-8"))
+            etag.update(bytes(str(fullpath.stat().st_file_attributes), "utf-8"))
             etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
+            print("\t", fullpath, " Etag: ", etag.hexdigest(), "Size: ", getdirsize(fullpath))
 
             res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
 
@@ -98,6 +125,26 @@ class DirectoryFilesystem(Filesystem):
             return 409
 
         return 201
+
+    def get(self, path):
+        realpath = self.basepath / path
+
+        if not realpath.exists():
+            raise NoSuchFileException()
+
+        return realpath.read_bytes()
+
+    def put(self, path, data):
+        realpath = self.basepath / path
+
+        try:
+            realpath.write_bytes(data)
+        except Exception as e:
+            print(e)
+
+        return 200
+
+
 
 
 
