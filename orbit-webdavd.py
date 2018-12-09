@@ -69,36 +69,27 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_HEAD(self):
         print("HEAD ", self.path)
 
-        try:
-            resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
-        except NoSuchFileException:
-            self.send_response(404, "Not found")
-            self.end_headers()
-        except ForbiddenException(403, "Forbidden"):
-            self.send_response(403, "Forbidden")
-            self.end_headers()
+        resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
-        self.send_response(200, "Ok")
-        self.send_header("Content-Length", str(len(resdata)))
+        self.send_response(resdata.get_code(), resdata.get_name())
+        if not resdata.get_data() == None:
+            self.send_header("Content-Length", str(len(resdata.get_data())))
+
         self.end_headers()
 
     def do_GET(self):
         print("GET ", self.path)
 
-        try:
-            resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
-        except NoSuchFileException:
-            self.send_response(404, "Not found")
-            self.end_headers()
-        except ForbiddenException(403, "Forbidden"):
-            self.send_response(403, "Forbidden")
-            self.end_headers()
+        resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
-        self.send_response(200, "Ok")
-        self.send_header("Content-Length", str(len(resdata)))
+        self.send_response(resdata.get_code(), resdata.get_name())
+        if not resdata.get_data() == None:
+            self.send_header("Content-Length", str(len(resdata.get_data())))
+
         self.end_headers()
 
-        self.wfile.write(resdata)
+        if not resdata.get_data() == None:
+            self.wfile.write(resdata.get_data())
 
 
 
@@ -123,11 +114,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
         result = self.fs.propfind(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
-        if result:
-            if not isinstance(result, list):
-                result = [result]
+        resultlist = result.get_data()
+        if not resultlist == None:
+            if not isinstance(resultlist, list):
+                resultlist = [resultlist]
 
-            for res in result:
+            for res in resultlist:
                 w.write("<D:response>\n")
                 w.write("<D:href>%s</D:href>\n" % res.get_property(HrefProperty).get_value())
                 w.write("<D:propstat>\n")
@@ -143,7 +135,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 w.write("</D:response>\n")
         w.write("</D:multistatus>\r\n")
 
-        self.send_response(207, "Multi-Status")  # Multi-Status
+        self.send_response(result.get_code(), result.get_name())  # Multi-Status
         self.send_header("Content-Type", "text/xml")
         self.send_header("Charset", "utf-8")
         self.send_header("Content-Length", str(w.getSize()))
@@ -162,13 +154,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         result = self.fs.mkcol(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
-        if result == 201:
-            self.send_response(201, "Created")  # Multi-Status
-            self.end_headers()
-
-        if result == 409:
-            self.send_response(209, "Conflict")  # Multi-Status
-            self.end_headers()
+        self.send_response(result.get_code(), result.get_name())
+        self.end_headers()
 
     def do_MOVE(self):
         destination = self.get_destination()
@@ -176,13 +163,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         result = self.fs.move(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
 
-        if result == 201:
-            self.send_response(201, "Created")  # Multi-Status
-            self.end_headers()
-
-        if result == 409:
-            self.send_response(209, "Conflict")  # Multi-Status
-            self.end_headers()
+        self.send_response(result.get_code(), result.get_name())
+        self.end_headers()
 
     def do_COPY(self):
         print(self.request_version, " COPY ", self.path)
@@ -200,9 +182,9 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         data = self.get_data()
         print(self.request_version, " PUT ", self.path)
 
-        self.fs.put(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
+        result = self.fs.put(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
 
-        self.send_response(200, "Ok")
+        self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
 

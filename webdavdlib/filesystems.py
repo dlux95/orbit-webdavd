@@ -6,6 +6,7 @@ from webdavdlib.properties import *
 import random
 import hashlib
 import os
+from webdavdlib.statuscodes import *
 
 def getdirsize(path):
     total_size = 0
@@ -101,7 +102,7 @@ class DirectoryFilesystem(Filesystem):
                     self.propfind(subpath.relative_to(self.basepath), depth - 1, reslist)
 
         reslist =  [i for i in reslist if i is not None]
-        return reslist
+        return Status207(reslist)
 
     def mkcol(self, path):
         realpath = self.basepath / path
@@ -109,11 +110,11 @@ class DirectoryFilesystem(Filesystem):
         try:
             realpath.mkdir(parents=False, exist_ok=False)
         except FileNotFoundError:
-            return 409
+            return Status409()
         except FileExistsError:
-            return 409
+            return Status409()
 
-        return 201
+        return Status201()
 
     def move(self, path, destination):
         realpath = self.basepath / path
@@ -122,17 +123,17 @@ class DirectoryFilesystem(Filesystem):
         try:
             os.rename(realpath, realdestination)
         except OSError:
-            return 409
+            return Status409()
 
-        return 201
+        return Status201()
 
     def get(self, path):
         realpath = self.basepath / path
 
         if not realpath.exists():
-            raise NoSuchFileException()
+            return Status404()
 
-        return realpath.read_bytes()
+        return Status200(realpath.read_bytes())
 
     def put(self, path, data):
         realpath = self.basepath / path
@@ -142,7 +143,7 @@ class DirectoryFilesystem(Filesystem):
         except Exception as e:
             print(e)
 
-        return 200
+        return Status200()
 
 
 

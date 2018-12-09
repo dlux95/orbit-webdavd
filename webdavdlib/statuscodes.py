@@ -5,6 +5,9 @@ class StatusCode(object):
     name = None
     desc = None
 
+    def __init__(self, additional_data = None):
+        self.additional_data = additional_data
+
     def get_code(self):
         if not self.__class__.code == None:
             return self.__class__.code
@@ -23,6 +26,8 @@ class StatusCode(object):
         else:
             raise NotImplementedError()
 
+    def get_data(self):
+        return self.additional_data
 
 class Status200(StatusCode):
     code = 200
@@ -53,6 +58,11 @@ class Status403(StatusCode):
     code = 403
     name = "Forbidden"
     desc = "Access to the resource was forbidden"
+
+class Status404(StatusCode):
+    code = 404
+    name = "Not Found"
+    desc = "Resource was not found"
 
 class Status405(StatusCode):
     code = 405
