@@ -154,5 +154,25 @@ class MySQLFilesystem(Filesystem):
     pass
 
 
-class RedisFileSystem(Filesystem):
+class RedisFilesystem(Filesystem):
     pass
+
+
+class MultiplexFilesystem(Filesystem):
+    def __init__(self, filesystems):
+        self.filesystems = filesystems
+
+    def propfind(self, path, depth):
+        raise NotImplementedError()
+
+    def mkcol(self, path):
+        raise NotImplementedError()
+
+    def move(self, path, destination):
+        raise NotImplementedError()
+
+    def get(self, path):
+        raise NotImplementedError()
+
+    def put(self, path, data):
+        raise NotImplementedError()
