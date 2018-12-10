@@ -6,6 +6,7 @@ from webdavdlib.properties import *
 import pathlib
 import urllib.parse
 from webdavdlib.exceptions import *
+import re
 
 VERSION = "0.1"
 
@@ -40,8 +41,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                                                                   "C:/Users/Daniel/")})
         self.close_connection = False
         self.protocol_version = "HTTP/1.1"
-        http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
+        http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
     def get_depth(self):
         depth = "infinity"
@@ -176,29 +177,75 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_COPY(self):
-        print(self.request_version, " COPY ", self.path)
-        pass
+        destination = self.get_destination()
+        print(self.request_version, " MOVE ", self.path, " to ", destination)
 
-    def do_LOCK(self):
-        print(self.request_version, " LOCK ", self.path)
-        pass
+        result = self.fs.copy(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"),
+                              pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
 
-    def do_UNLOCK(self):
-        print(self.request_version, " UNLOCK ", self.path)
-        pass
+        self.send_response(result.get_code(), result.get_name())
+        self.end_headers()
 
     def do_PUT(self):
         data = self.get_data()
-        print(self.request_version, " PUT ", self.path)
+        print(self.request_version, " PUT ", self.path, " Data:", len(data))
 
         result = self.fs.put(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
+    def do_LOCK(self):
+        data = self.get_data()
+        print(self.request_version, " LOCK ", self.path, " Data:", len(data))
+        lockowner = None
+        if data != "":
+            lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group()
+
+        result = self.fs.lock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), lockowner)
+
+        w = WriteBuffer(self.wfile, True)
+        w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
+        w.write("<D:prop xmlns:D=\"DAV:\">")
+        w.write("<D:lockdiscovery>")
+        w.write("<D:activelock>")
+        w.write("<D:locktype><D:write/></D:locktype>")
+        w.write("<D:lockscope><D:exclusive/></D:lockscope>")
+        w.write("<D:depth>Infinity</D:depth>")
+        w.write("<D:owner>")
+        w.write("<D:href>" + str(lockowner) + "</D:href>")
+        w.write("</D:owner>")
+        w.write("<D:timeout>Infinite</D:timeout>")
+        w.write("<D:locktoken><D:href>opaquelocktoken:" + result.get_data()[0] + "</D:href></D:locktoken>")
+        w.write("</D:activelock>")
+        w.write("</D:lockdiscovery>")
+        w.write("</D:prop>")
+
+        self.send_response(result.get_code(), result.get_name())
+        self.send_header("Lock-Token", "<opaquelocktoken:" + result.get_data()[0] + ">")
+        self.send_header("Content-type", 'text/xml')
+        self.send_header("Charset", '"utf-8"')
+        self.send_header("Content-Length", str(w.getSize()))
+        self.end_headers()
+        w.flush()
+
+    def do_UNLOCK(self):
+        data = self.get_data()
+        print(self.request_version, " UNLOCK ", self.path, "Data:", len(data))
+        print(self.headers)
+
+        locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group()
+
+        result = self.fs.unlock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), locktoken)
+
+        self.send_response(result.get_code(), result.get_name())
+        self.send_header("Content-Length", 0)
+        self.end_headers()
 
     def log_message(self, format, *args):
         pass
+
+
 
 
 if __name__ == "__main__":

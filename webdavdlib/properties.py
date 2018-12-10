@@ -141,8 +141,20 @@ class LockDiscoveryProperty(Property):
     name = "lockdiscovery"
 
     def to_xml(self):
-        return "<D:lockdiscovery/>\n"
-
+        if self.get_value() == None:
+            return "<D:lockdiscovery/>\n"
+        else:
+            return  "<D:lockdiscovery>\n" \
+                    "<D:activelock>\n" \
+                    "<D:locktype><D:write/></D:locktype>\n" \
+                    "<D:lockscope><D:exclusive/></D:lockscope>\n" \
+                    "<D:depth>Infinity</D:depth>\n" \
+                    "<D:owner><D:href>" + self.get_value()[1] + "</D:href></D:owner>\n" \
+                    "<D:timeout>Second-604800</D:timeout>\n" \
+                    "<D:locktoken><D:href>opaquelocktoken:" + self.get_value()[0] + "</D:href></D:locktoken>\n" \
+                    "<D:lockroot><D:href>/" + self.get_value()[2] + "</D:href></D:lockroot>\n" \
+                    "</D:activelock>\n" \
+                    "</D:lockdiscovery>\n" \
 
 
 

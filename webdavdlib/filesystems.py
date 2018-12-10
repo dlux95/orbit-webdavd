@@ -10,7 +10,7 @@ from webdavdlib.statuscodes import *
 import shutil
 import shelve
 
-lockdatabase = shelve.open("lock.db")
+lockdatabase = {}
 
 def getdirsize(path):
     total_size = 0
@@ -44,10 +44,10 @@ class Filesystem(object):
     def delete(self):
         raise NotImplementedError()
 
-    def lock(self, path):
+    def lock(self, path, lockowner):
         raise NotImplementedError()
 
-    def unlock(self, path):
+    def unlock(self, path, locktoken):
         raise NotImplementedError()
 
 
@@ -72,8 +72,11 @@ class DirectoryFilesystem(Filesystem):
         res.add_property(LastModifiedProperty(fullpath.stat().st_mtime))
         res.add_property(CreationDateProperty(fullpath.stat().st_ctime))
         res.add_property(SupportedLockProperty())
-        res.add_property(LockDiscoveryProperty())
-        res.add_property(IsHiddenProperty(fullpath.name.startswith(".")))
+        res.add_property(IsHiddenProperty(fullpath.name.startswith(".") or fullpath.name.startswith("~")))
+        if fullpath.as_posix() in lockdatabase:
+            res.add_property(LockDiscoveryProperty(lockdatabase[fullpath.as_posix()]))
+        else:
+            res.add_property(LockDiscoveryProperty())
 
         if fullpath.is_file():
             res.add_property(ContentLengthProperty(fullpath.stat().st_size))
@@ -146,6 +149,17 @@ class DirectoryFilesystem(Filesystem):
 
         return Status201()
 
+    def move(self, path, destination):
+        realpath = self.basepath / path
+        realdestination = self.basepath / destination
+
+        try:
+            shutil.copy(realpath, realdestination)
+        except OSError:
+            return Status409()
+
+        return Status201()
+
     def get(self, path):
         realpath = self.basepath / path
 
@@ -177,12 +191,35 @@ class DirectoryFilesystem(Filesystem):
 
         return Status204()
 
-    def lock(self, path):
+    def lock(self, path, lockowner):
         realpath = self.basepath / path
 
-        locktoken = str(random.getrandbits(128))
-        lockdatabase[realpath] = locktoken
-        
+        if realpath.as_posix() in lockdatabase:
+            locktoken = lockdatabase[realpath.as_posix()][0]
+            lockowner = lockdatabase[realpath.as_posix()][1]
+
+            return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
+        else:
+            if lockowner == None:
+                return Status424()
+
+            locktoken = str(random.getrandbits(128))
+            lockdatabase[realpath.as_posix()] = (locktoken, lockowner, realpath.relative_to(self.basepath).as_posix())
+
+            return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
+
+    def unlock(self, path, locktoken):
+        realpath = self.basepath / path
+
+        if realpath.as_posix() in lockdatabase:
+            if lockdatabase[realpath.as_posix()][0] == locktoken:
+                del lockdatabase[realpath.as_posix()]
+            else:
+                return Status424()
+        else:
+            return Status424()
+
+        return Status204()
 
 
 
@@ -267,5 +304,19 @@ class MultiplexFilesystem(Filesystem):
         vfs = path.parts[0]
         if vfs in self.filesystems:
             return self.filesystems[vfs].delete(path.relative_to(vfs))
+        else:
+            return Status500()
+
+    def lock(self, path, lockowner):
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].lock(path.relative_to(vfs), lockowner)
+        else:
+            return Status500()
+
+    def unlock(self, path, locktoken):
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].unlock(path.relative_to(vfs), locktoken)
         else:
             return Status500()

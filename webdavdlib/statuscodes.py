@@ -89,6 +89,11 @@ class Status423(StatusCode):
     name = "Locked"
     desc = "Resource is locked"
 
+class Status424(StatusCode):
+    code = 424
+    name = "Method Failure"
+    desc = "Some Function failed"
+
 class Status500(StatusCode):
     code = 500
     name = "Server Error"
