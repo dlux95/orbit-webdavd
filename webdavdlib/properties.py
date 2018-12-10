@@ -7,6 +7,9 @@ class Property(object):
     def __init__(self, value=None):
         self.value = value
 
+    def set_value(self, value):
+        self.value = value
+
     def get_name(self):
         return self.__class__.name
 

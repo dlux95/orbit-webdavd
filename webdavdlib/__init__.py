@@ -24,3 +24,6 @@ class WebDAVResource(object):
 
     def __str__(self):
         return "WebDAVResource(%s)" % self.get_property(HrefProperty).get_value()
+
+    def __repr__(self):
+        return str(self)

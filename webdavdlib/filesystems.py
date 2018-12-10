@@ -92,6 +92,10 @@ class DirectoryFilesystem(Filesystem):
         return res
 
     def propfind(self, path, depth=0, reslist=None):
+        if depth < 0:
+            return Status207(None)
+
+        print("propfind ", path)
         realpath = self.basepath / path
 
         reslist.append(self.create_resource(realpath, self.basepath))
@@ -162,8 +166,42 @@ class MultiplexFilesystem(Filesystem):
     def __init__(self, filesystems):
         self.filesystems = filesystems
 
-    def propfind(self, path, depth):
-        raise NotImplementedError()
+    def propfind(self, path, depth, reslist=None):
+        path = pathlib.Path(path)
+
+        print(path)
+        if path == pathlib.Path("."):
+            # Root path, need to construct virtual folders
+            res = []
+            root = webdavdlib.WebDAVResource()
+            root.add_property(HrefProperty("/."))
+            root.add_property(LastAccessedProperty(0))
+            root.add_property(LastModifiedProperty(0))
+            root.add_property(CreationDateProperty(0))
+            root.add_property(SupportedLockProperty())
+            root.add_property(LockDiscoveryProperty())
+            root.add_property(ResourceTypeProperty("<D:collection/>"))
+            root.add_property(EtagProperty("\"" + str(random.getrandbits(128)) + "\""))
+            res.append(root)
+            for prefix, fs in self.filesystems.items():
+                print("Running Filesystem on ", prefix)
+                propresults = fs.propfind(".", depth=depth-1, reslist=[]).get_data()
+                if propresults == None:
+                  continue
+                for p in propresults:
+                    p.get_property(HrefProperty).set_value("/" + prefix + p.get_property(HrefProperty).get_value())
+                res.extend(propresults)
+
+
+            return Status207([i for i in res if i is not None])
+
+        else:
+            vfs = path.parts[0]
+            if vfs in self.filesystems:
+                res = self.filesystems[vfs].propfind(path.relative_to(vfs), depth=depth, reslist=[]).get_data()
+                return Status207([i for i in res if i is not None])
+            else:
+                return Status207()
 
     def mkcol(self, path):
         raise NotImplementedError()

@@ -34,7 +34,10 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
-        self.fs = webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
+        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"fs1" : webdavdlib.filesystems.DirectoryFilesystem(
+                                                                  "C:/WebDAVTest/"),
+                                                              "fs2" : webdavdlib.filesystems.DirectoryFilesystem(
+                                                                  "C:/WebDAVTest2/")})
         self.close_connection = False
         self.protocol_version = "HTTP/1.1"
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
@@ -114,14 +117,17 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
 
         result = self.fs.propfind(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
+
         resultlist = result.get_data()
+        print(resultlist)
+
         if not resultlist == None:
             if not isinstance(resultlist, list):
                 resultlist = [resultlist]
 
             for res in resultlist:
                 w.write("<D:response>\n")
-                w.write("<D:href>%s</D:href>\n" % res.get_property(HrefProperty).get_value())
+                w.write("<D:href>%s</D:href>\n" % res.get_property(HrefProperty).get_value().strip("."))
                 w.write("<D:propstat>\n")
                 w.write("<D:prop>\n")
                 for p in res._properties:
