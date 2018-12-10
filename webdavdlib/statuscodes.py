@@ -89,6 +89,11 @@ class Status423(StatusCode):
     name = "Locked"
     desc = "Resource is locked"
 
+class Status500(StatusCode):
+    code = 500
+    name = "Server Error"
+    desc = "The server encountered an error"
+
 class Status502(StatusCode):
     code = 502
     name = "Bad Gateway"

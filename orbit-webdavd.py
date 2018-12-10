@@ -34,10 +34,10 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
-        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"fs1" : webdavdlib.filesystems.DirectoryFilesystem(
+        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"Test" : webdavdlib.filesystems.DirectoryFilesystem(
                                                                   "C:/WebDAVTest/"),
-                                                              "fs2" : webdavdlib.filesystems.DirectoryFilesystem(
-                                                                  "C:/WebDAVTest2/")})
+                                                              "Benutzer": webdavdlib.filesystems.DirectoryFilesystem(
+                                                                  "C:/Users/Daniel/")})
         self.close_connection = False
         self.protocol_version = "HTTP/1.1"
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
@@ -119,7 +119,6 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         result = self.fs.propfind(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
 
         resultlist = result.get_data()
-        print(resultlist)
 
         if not resultlist == None:
             if not isinstance(resultlist, list):
@@ -152,7 +151,11 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         print(self.request_version, " DELETE ", self.path)
-        pass
+
+        result = self.fs.delete(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+
+        self.send_response(result.get_code(), result.get_name())
+        self.end_headers()
 
     def do_MKCOL(self):
         data = self.get_data()

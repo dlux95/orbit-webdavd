@@ -77,6 +77,12 @@ class HrefProperty(Property):
 class IsHiddenProperty(Property):
     name = "ishidden"
 
+    def to_xml(self):
+        if self.get_value():
+            return "<D:ishidden>1</D:ishidden>\n"
+        else:
+            return "<D:ishidden>0</D:ishidden>\n"
+
 class IsReadOnlyProperty(Property):
     name = "isreadonly"
 

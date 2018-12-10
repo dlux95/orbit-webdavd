@@ -7,6 +7,10 @@ import random
 import hashlib
 import os
 from webdavdlib.statuscodes import *
+import shutil
+import shelve
+
+lockdatabase = shelve.open("lock.db")
 
 def getdirsize(path):
     total_size = 0
@@ -14,7 +18,10 @@ def getdirsize(path):
     for path, dirs, files in os.walk(start_path):
         for f in files:
             fp = os.path.join(path, f)
-            total_size += os.path.getsize(fp)
+            try:
+                total_size += os.path.getsize(fp)
+            except:
+                pass
 
     return total_size
 
@@ -32,6 +39,15 @@ class Filesystem(object):
         raise NotImplementedError()
 
     def put(self, path, data):
+        raise NotImplementedError()
+
+    def delete(self):
+        raise NotImplementedError()
+
+    def lock(self, path):
+        raise NotImplementedError()
+
+    def unlock(self, path):
         raise NotImplementedError()
 
 
@@ -57,6 +73,7 @@ class DirectoryFilesystem(Filesystem):
         res.add_property(CreationDateProperty(fullpath.stat().st_ctime))
         res.add_property(SupportedLockProperty())
         res.add_property(LockDiscoveryProperty())
+        res.add_property(IsHiddenProperty(fullpath.name.startswith(".")))
 
         if fullpath.is_file():
             res.add_property(ContentLengthProperty(fullpath.stat().st_size))
@@ -77,14 +94,13 @@ class DirectoryFilesystem(Filesystem):
             res.add_property(ResourceTypeProperty("<D:collection/>"))
 
             etag = hashlib.sha256()
-            etag.update(bytes(str(getdirsize(fullpath)), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_atime), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_ctime), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_ino), "utf-8"))
             etag.update(bytes(str(fullpath.stat().st_file_attributes), "utf-8"))
             etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
-            print("\t", fullpath, " Etag: ", etag.hexdigest(), "Size: ", getdirsize(fullpath))
+            print("\t", fullpath, " Etag: ", etag.hexdigest())
 
             res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
 
@@ -95,7 +111,6 @@ class DirectoryFilesystem(Filesystem):
         if depth < 0:
             return Status207(None)
 
-        print("propfind ", path)
         realpath = self.basepath / path
 
         reslist.append(self.create_resource(realpath, self.basepath))
@@ -149,7 +164,25 @@ class DirectoryFilesystem(Filesystem):
 
         return Status200()
 
+    def delete(self, path):
+        realpath = self.basepath / path
 
+        try:
+            if realpath.is_file():
+                realpath.unlink()
+            else:
+                shutil.rmtree(realpath, ignore_errors=True)
+        except:
+            return Status500()
+
+        return Status204()
+
+    def lock(self, path):
+        realpath = self.basepath / path
+
+        locktoken = str(random.getrandbits(128))
+        lockdatabase[realpath] = locktoken
+        
 
 
 
@@ -169,7 +202,6 @@ class MultiplexFilesystem(Filesystem):
     def propfind(self, path, depth, reslist=None):
         path = pathlib.Path(path)
 
-        print(path)
         if path == pathlib.Path("."):
             # Root path, need to construct virtual folders
             res = []
@@ -184,7 +216,6 @@ class MultiplexFilesystem(Filesystem):
             root.add_property(EtagProperty("\"" + str(random.getrandbits(128)) + "\""))
             res.append(root)
             for prefix, fs in self.filesystems.items():
-                print("Running Filesystem on ", prefix)
                 propresults = fs.propfind(".", depth=depth-1, reslist=[]).get_data()
                 if propresults == None:
                   continue
@@ -204,13 +235,37 @@ class MultiplexFilesystem(Filesystem):
                 return Status207()
 
     def mkcol(self, path):
-        raise NotImplementedError()
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].mkcol(path.relative_to(vfs))
+        else:
+            return Status409()
 
     def move(self, path, destination):
-        raise NotImplementedError()
+        vfssource = path.parts[0]
+        vfsdestination = path.parts[0]
+        if vfssource in self.filesystems and vfsdestination in self.filesystems:
+            return self.filesystems[vfssource].move(path.relative_to(vfssource), destination.relative_to(vfsdestination))
+        else:
+            return Status404()
 
     def get(self, path):
-        raise NotImplementedError()
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].get(path.relative_to(vfs))
+        else:
+            return Status404()
 
     def put(self, path, data):
-        raise NotImplementedError()
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].put(path.relative_to(vfs), data)
+        else:
+            return Status500()
+
+    def delete(self, path):
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].delete(path.relative_to(vfs))
+        else:
+            return Status500()
