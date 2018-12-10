@@ -27,3 +27,9 @@ class WebDAVResource(object):
 
     def __repr__(self):
         return str(self)
+
+class WebDAVRequest(object):
+    def __init__(self, headers, data):
+        self.headers = headers
+        self.data = data
+

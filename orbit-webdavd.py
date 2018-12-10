@@ -39,8 +39,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                                                                   "C:/WebDAVTest/"),
                                                               "Benutzer": webdavdlib.filesystems.DirectoryFilesystem(
                                                                   "C:/Users/Daniel/")})
-        self.close_connection = False
-        self.protocol_version = "HTTP/1.1"
+        self.close_connection = True
+        self.protocol_version = "HTTP/1.0"
 
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
@@ -71,9 +71,10 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         return data
 
     def do_HEAD(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         print("HEAD ", self.path)
 
-        resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        resdata = self.fs.get(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
         self.send_response(resdata.get_code(), resdata.get_name())
         if not resdata.get_data() == None:
@@ -82,9 +83,10 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         print("GET ", self.path)
 
-        resdata = self.fs.get(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        resdata = self.fs.get(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
         self.send_response(resdata.get_code(), resdata.get_name())
         if not resdata.get_data() == None:
@@ -98,6 +100,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
     def do_OPTIONS(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         print(self.request_version, " OPTIONS ", self.path)
         self.send_response(200, self.server_version)
         self.send_header("Allow", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPATCH, MKCOL, LOCK, UNLOCK, MOVE, COPY")
@@ -108,16 +111,17 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_PROPFIND(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         depth = self.get_depth()
-        data = self.get_data()
+        data = request.data
 
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
 
         w = WriteBuffer(self.wfile, False)
         w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n")
-        w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\">\r\n")
+        w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\"   xmlns:Office=\"urn:schemas-microsoft-com:office:office\">\r\n")
 
-        result = self.fs.propfind(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
+        result = self.fs.propfind(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), depth, [])
 
         resultlist = result.get_data()
 
@@ -151,92 +155,104 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
     def do_DELETE(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         print(self.request_version, " DELETE ", self.path)
 
-        result = self.fs.delete(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        result = self.fs.delete(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
     def do_MKCOL(self):
-        data = self.get_data()
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
+        data = request.data
         print(self.request_version, " MKCOL ", self.path, " Data:", len(data))
 
-        result = self.fs.mkcol(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+        result = self.fs.mkcol(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
     def do_MOVE(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
 
-        result = self.fs.move(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
+        result = self.fs.move(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
     def do_COPY(self):
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
 
-        result = self.fs.copy(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"),
+        result = self.fs.copy(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"),
                               pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
     def do_PUT(self):
-        data = self.get_data()
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
+        data = request.data
         print(self.request_version, " PUT ", self.path, " Data:", len(data))
 
-        result = self.fs.put(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
+        result = self.fs.put(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
 
     def do_LOCK(self):
-        data = self.get_data()
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
+        data = request.data
         print(self.request_version, " LOCK ", self.path, " Data:", len(data))
         lockowner = None
         if data != "":
-            lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group()
+            lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
 
-        result = self.fs.lock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), lockowner)
+        result = self.fs.lock(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), lockowner)
 
-        w = WriteBuffer(self.wfile, True)
-        w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
-        w.write("<D:prop xmlns:D=\"DAV:\">")
-        w.write("<D:lockdiscovery>")
-        w.write("<D:activelock>")
-        w.write("<D:locktype><D:write/></D:locktype>")
-        w.write("<D:lockscope><D:exclusive/></D:lockscope>")
-        w.write("<D:depth>Infinity</D:depth>")
-        w.write("<D:owner>")
-        w.write("<D:href>" + str(lockowner) + "</D:href>")
-        w.write("</D:owner>")
-        w.write("<D:timeout>Infinite</D:timeout>")
-        w.write("<D:locktoken><D:href>opaquelocktoken:" + result.get_data()[0] + "</D:href></D:locktoken>")
-        w.write("</D:activelock>")
-        w.write("</D:lockdiscovery>")
-        w.write("</D:prop>")
+        if result.get_data() != None:
+            w = WriteBuffer(self.wfile, False)
+            w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
+            w.write("<D:prop xmlns:D=\"DAV:\">")
+            w.write("<D:lockdiscovery>")
+            w.write("<D:activelock>")
+            w.write("<D:locktype><D:write/></D:locktype>")
+            w.write("<D:lockscope><D:exclusive/></D:lockscope>")
+            w.write("<D:depth>Infinity</D:depth>")
+            w.write("<D:owner>")
+            w.write("<D:href>" + str(lockowner) + "</D:href>")
+            w.write("</D:owner>")
+            w.write("<D:timeout>Infinite</D:timeout>")
+            w.write("<D:locktoken><D:href>opaquelocktoken:" + result.get_data()[0] + "</D:href></D:locktoken>")
+            w.write("</D:activelock>")
+            w.write("</D:lockdiscovery>")
+            w.write("</D:prop>")
 
         self.send_response(result.get_code(), result.get_name())
-        self.send_header("Lock-Token", "<opaquelocktoken:" + result.get_data()[0] + ">")
-        self.send_header("Content-type", 'text/xml')
-        self.send_header("Charset", '"utf-8"')
-        self.send_header("Content-Length", str(w.getSize()))
+        if result.get_data() != None:
+            self.send_header("Lock-Token", "<opaquelocktoken:" + result.get_data()[0] + ">")
+            self.send_header("Content-type", 'text/xml')
+            self.send_header("Charset", '"utf-8"')
+            self.send_header("Content-Length", str(w.getSize()))
+        else:
+            self.send_header("Content-Length", 0)
         self.end_headers()
-        w.flush()
+
+        if result.get_data() != None:
+            w.flush()
 
     def do_UNLOCK(self):
-        data = self.get_data()
+        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
+        data = request.data
         print(self.request_version, " UNLOCK ", self.path, "Data:", len(data))
-        print(self.headers)
 
-        locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group()
+        locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
 
-        result = self.fs.unlock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), locktoken)
+        result = self.fs.unlock(request, pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), locktoken)
 
         self.send_response(result.get_code(), result.get_name())
         self.send_header("Content-Length", 0)

@@ -157,6 +157,11 @@ class LockDiscoveryProperty(Property):
                     "</D:lockdiscovery>\n" \
 
 
+class OfficeModifiedBy(Property):
+    name = "office:modifiedby"
+
+    def to_xml(self):
+        return "<Office:modifiedby><Office:modifiedby>\n"
 
 def unixdate2iso8601(d):
     tz = timezone / 3600 # can it be fractional?
