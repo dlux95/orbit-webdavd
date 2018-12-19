@@ -35,10 +35,9 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
-        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"Test" : webdavdlib.filesystems.DirectoryFilesystem(
+        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"Gruppen" : webdavdlib.filesystems.DirectoryFilesystem(
                                                                   "C:/WebDAVTest/"),
-                                                              "Benutzer": webdavdlib.filesystems.DirectoryFilesystem(
-                                                                  "C:/Users/Daniel/")})
+                                                              "Benutzer": webdavdlib.filesystems.DirectoryFilesystem("C:/")})
         self.close_connection = True
         self.protocol_version = "HTTP/1.0"
 

@@ -8,9 +8,8 @@ import hashlib
 import os
 from webdavdlib.statuscodes import *
 import shutil
-import shelve
 
-lockdatabase = {}
+lockdatabase = []
 
 def getdirsize(path):
     total_size = 0
@@ -26,28 +25,76 @@ def getdirsize(path):
     return total_size
 
 class Filesystem(object):
-    def propfind(self, request, path, depth):
+    STDPROP = "" # TODO: Add default allprops
+
+    def get_props(self, path, props=STDPROP):
+        """
+        Get properties of resouce described by path.
+
+        Returns a list of Property Objects (webdavdlib.properties.*)
+
+        :param path: path to the resource
+        :param props: list of properties requested (list of strings)
+        :return: list of properties (list of webdavdlib.properties.*)
+        """
         raise NotImplementedError()
 
-    def mkcol(self, request, path):
+    def get_children(self, path):
+        """
+        Get children of a resource described by path. Only suitible for collection resources.
+
+        Returns a list of paths for childs of path
+
+        :param path: path to the resource
+        :return: list of child resources
+        """
         raise NotImplementedError()
 
-    def move(self, request, path, destination):
+    def get_content(self, path, start=-1, end=-1):
+        """
+        Get the content of a resource described by path. Only suitible for non-collection resources.
+        A start and end byte can be specified to get a specific part of a resource.
+
+        Returns a byte like object of the resource identified by path.
+
+        :param path: path to the resource
+        :param start: (optional) start byte (included)
+        :param end: (optional) end byte (excluded)
+        :return: bytes like object with the content of the resource in the specified range
+        """
         raise NotImplementedError()
 
-    def get(self, request, path):
+    def set_content(self, path, content, start=-1):
+        """
+        Sets the content of a resource described by path. Only suitible for non-collection resources.
+        A start byte can be specified to only update a part of a resource.
+
+        Returns True on successful content change. False otherwise.
+
+        :param path: path to the resource
+        :param content: byte like content
+        :param start: (optional) start byte to update content of the resource
+        :return: True or False depending on operation outcome.
+        """
         raise NotImplementedError()
 
-    def put(self, request, path, data):
+    def delete(self, path):
+        """
+        Deletes the resource described by path. Can be used on collections and non-collections.
+
+        Returns True on successful deletion. False otherwise.
+        :param path: path to the resource
+        :return: True or False depending on operation outcome.
+        """
         raise NotImplementedError()
 
-    def delete(self, request):
-        raise NotImplementedError()
-
-    def lock(self, request, path, lockowner):
-        raise NotImplementedError()
-
-    def unlock(self, request, path, locktoken):
+    def get_uid(self, path):
+        """
+        Gets a unique identifier for a specific resource. (Should be identical if two filesystems point to
+        the same resource). This identifier is used for locking purposes.
+        :param path: path to the resource
+        :return: unique identifier (string) e.g. path: test/test.txt -> uid: /home/webdav/test/test.txt
+        """
         raise NotImplementedError()
 
 
