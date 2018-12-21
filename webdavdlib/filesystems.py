@@ -2,12 +2,12 @@ import pathlib
 import webdavdlib.exceptions
 from webdavdlib.exceptions import *
 import webdavdlib
-from webdavdlib.properties import *
 import random
 import hashlib
 import os
 from webdavdlib.statuscodes import *
 import shutil
+from time import strftime, localtime, gmtime
 
 lockdatabase = []
 
@@ -24,18 +24,20 @@ def getdirsize(path):
 
     return total_size
 
+# TODO: Add default allprops
+STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname"]
 class Filesystem(object):
-    STDPROP = "" # TODO: Add default allprops
+
 
     def get_props(self, path, props=STDPROP):
         """
-        Get properties of resouce described by path.
+        Get properties of resource described by path.
 
-        Returns a list of Property Objects (webdavdlib.properties.*)
+        Returns a list of property strings.
 
         :param path: path to the resource
         :param props: list of properties requested (list of strings)
-        :return: list of properties (list of webdavdlib.properties.*)
+        :return: list of properties (list of strings)
         """
         raise NotImplementedError()
 
@@ -78,6 +80,16 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
+    def create(self, path, dir=True):
+        """
+        Creates a resource that is not existing yet. Primarly used by MKCOL.
+
+        :param path: path to the resource that is being created
+        :param dir: should be True when trying to create a directory, creates a file when False
+        :return: True or False depending on operation outcome.
+        """
+
+
     def delete(self, path):
         """
         Deletes the resource described by path. Can be used on collections and non-collections.
@@ -109,83 +121,123 @@ class DirectoryFilesystem(Filesystem):
         if not self.basepath.is_dir():
             raise webdavdlib.exceptions.NoSuchFileException()
 
-    def create_resource(self, request, fullpath, basepath):
-        if not fullpath.exists():
-            return None
+    def convert_local_to_real(self, path):
+        realpath = self.basepath / path
+        if not realpath.as_posix().startswith(self.basepath.as_posix()):
+            print("Access to ", realpath, " restricted because not under ", self.basepath)
+            raise NoSuchFileException()
 
-        res = webdavdlib.WebDAVResource()
-        res.add_property(HrefProperty("/" + str(fullpath.relative_to(basepath).as_posix())))
+        return realpath
 
-        res.add_property(LastAccessedProperty(fullpath.stat().st_atime))
-        if not "Microsoft Office Excel" in request.headers["User-Agent"]:
-            res.add_property(LastModifiedProperty(fullpath.stat().st_mtime))
-        res.add_property(CreationDateProperty(fullpath.stat().st_ctime))
-        res.add_property(SupportedLockProperty())
-        res.add_property(IsHiddenProperty(fullpath.name.startswith(".") or fullpath.name.startswith("~")))
-        if fullpath.as_posix() in lockdatabase:
-            res.add_property(LockDiscoveryProperty(lockdatabase[fullpath.as_posix()]))
+    def get_content(self, path, start=-1, end=-1):
+        path = self.convert_local_to_real(path)
+
+        with open(path, "rb") as f:
+            if start != -1:
+                f.seek(start)
+
+            if end != -1:
+                return f.read(end-start)
+            else:
+                return f.read()
+
+    def set_content(self, path, content, start=-1):
+        path = self.convert_local_to_real(path)
+
+        with open(path, "wb") as f:
+            if start != -1:
+                f.seek(start)
+
+            f.write(content)
+
+    def delete(self, path):
+        path = self.convert_local_to_real(path)
+
+        if path.is_file():
+            path.unlink()
         else:
-            res.add_property(LockDiscoveryProperty())
+            shutil.rmtree(path, ignore_errors=True)
 
-        if fullpath.is_file():
-            res.add_property(ContentLengthProperty(fullpath.stat().st_size))
-            res.add_property(ResourceTypeProperty(""))
+    def create(self, path, dir=True):
+        path = self.convert_local_to_real(path)
 
+        if dir:
+            path.mkdir(parents=False, exist_ok=False)
+        else:
+            path.touch(exist_ok=False)
+
+    def get_props(self, path, props=STDPROP):
+        path = self.convert_local_to_real(path)
+
+        if not path.exists():
+            raise NoSuchFileException()
+
+        propdata = {"D:status": "200 OK"}
+
+        for prop in props:
+            propdata[prop] = self._get_prop(path, prop)
+
+        return propdata
+
+    def _get_prop(self, path, prop):
+        if prop == "D:creationdate":
+            return unixdate2httpdate(path.stat().st_ctime)
+
+        elif prop == "D:lastmodified":
+            return unixdate2httpdate(path.stat().st_mtime)
+
+        elif prop == "D:lastaccessed":
+            return unixdate2httpdate(path.stat().st_mtime)
+
+        elif prop == "D:ishidden":
+            if path.name.startswith(".") or path.name.startswith("~"):
+                return "1"
+            else:
+                return False
+
+        elif prop == "D:getcontentlength":
+            return path.stat().st_size
+
+        elif prop == "D:name" or prop == "D:displayname":
+            return path.relative_to(self.basepath).name
+
+        elif prop == "D:resourcetype":
+            if path.is_file():
+                return ""
+            if path.is_dir():
+                return "<D:collection/>"
+
+        elif prop == "D:iscollection":
+            if path.is_dir():
+                return True
+            else:
+                return False
+
+        elif prop == "D:getetag":
             etag = hashlib.sha256()
-            etag.update(bytes(str(fullpath.stat().st_size), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_atime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_ctime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_ino), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_file_attributes), "utf-8"))
-            etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
-            print("\t", fullpath, " Etag: ", etag.hexdigest())
-            res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
-
-        if fullpath.is_dir():
-            res.add_property(ResourceTypeProperty("<D:collection/>"))
-
-            etag = hashlib.sha256()
-            etag.update(bytes(str(fullpath.stat().st_mtime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_atime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_ctime), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_ino), "utf-8"))
-            etag.update(bytes(str(fullpath.stat().st_file_attributes), "utf-8"))
-            etag.update(bytes("/" + str(fullpath.relative_to(basepath).as_posix()), "utf-8"))
-            print("\t", fullpath, " Etag: ", etag.hexdigest())
-
-            res.add_property(EtagProperty("\"" + etag.hexdigest() + "\""))
+            etag.update(bytes(str(path.stat().st_size), "utf-8"))
+            etag.update(bytes(str(path.stat().st_mtime), "utf-8"))
+            etag.update(bytes(str(path.stat().st_atime), "utf-8"))
+            etag.update(bytes(str(path.stat().st_ctime), "utf-8"))
+            etag.update(bytes(str(path.stat().st_ino), "utf-8"))
+            etag.update(bytes(str(path.stat().st_file_attributes), "utf-8"))
+            etag.update(bytes(path.as_posix(), "utf-8"))
+            return "\"%s\"" % etag.hexdigest()
 
 
-        return res
+        else:
+            return False
 
-    def propfind(self, request, path, depth=0, reslist=None):
-        if depth < 0:
-            return Status207(None)
+    def get_children(self, path):
+        path = self.convert_local_to_real(path)
+        if path.is_dir():
+            l = []
+            for sub in path.iterdir():
+                l.append(sub.relative_to(self.basepath).as_posix())
+            return l
+        else:
+            return []
 
-        realpath = self.basepath / path
-
-        reslist.append(self.create_resource(request, realpath, self.basepath))
-
-        if depth > 0:
-            if realpath.is_dir():
-                for subpath in realpath.iterdir():
-                    self.propfind(request, subpath.relative_to(self.basepath), depth - 1, reslist)
-
-        reslist =  [i for i in reslist if i is not None]
-        return Status207(reslist)
-
-    def mkcol(self, request, path):
-        realpath = self.basepath / path
-
-        try:
-            realpath.mkdir(parents=False, exist_ok=False)
-        except FileNotFoundError:
-            return Status409()
-        except FileExistsError:
-            return Status409()
-
-        return Status201()
 
     def move(self, request, path, destination):
         realpath = self.basepath / path
@@ -209,64 +261,16 @@ class DirectoryFilesystem(Filesystem):
 
         return Status201()
 
-    def get(self, request, path):
-        realpath = self.basepath / path
-
-        if not realpath.exists():
-            return Status404()
-
-        return Status200(realpath.read_bytes())
-
-    def put(self, request, path, data):
-        realpath = self.basepath / path
-
-        try:
-            realpath.write_bytes(data)
-        except Exception as e:
-            print(e)
-
-        return Status200()
-
-    def delete(self, request, path):
-        realpath = self.basepath / path
-
-        try:
-            if realpath.is_file():
-                realpath.unlink()
-            else:
-                shutil.rmtree(realpath, ignore_errors=True)
-        except:
-            return Status500()
-
-        return Status204()
-
     def lock(self, request, path, lockowner):
         realpath = self.basepath / path
 
-        if realpath.as_posix() in lockdatabase:
-            locktoken = lockdatabase[realpath.as_posix()][0]
-            lockowner = lockdatabase[realpath.as_posix()][1]
 
-            return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
-        else:
-            if lockowner == None:
-                return Status424()
+        locktoken = str(random.getrandbits(128))
 
-            locktoken = str(random.getrandbits(128))
-            lockdatabase[realpath.as_posix()] = (locktoken, lockowner, realpath.relative_to(self.basepath).as_posix())
-
-            return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
+        return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
 
     def unlock(self, request, path, locktoken):
         realpath = self.basepath / path
-
-        if realpath.as_posix() in lockdatabase:
-            if lockdatabase[realpath.as_posix()][0] == locktoken:
-                del lockdatabase[realpath.as_posix()]
-            else:
-                return Status424()
-        else:
-            return Status424()
 
         return Status204()
 
@@ -369,3 +373,12 @@ class MultiplexFilesystem(Filesystem):
             return self.filesystems[vfs].unlock(request, path.relative_to(vfs), locktoken)
         else:
             return Status500()
+
+
+def unixdate2iso8601(d):
+    tz = timezone / 3600 # can it be fractional?
+    tz = '%+03d' % tz
+    return strftime('%Y-%m-%dT%H:%M:%S', localtime(d)) + tz + ':00'
+
+def unixdate2httpdate(d):
+    return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))
