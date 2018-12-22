@@ -144,7 +144,11 @@ class DirectoryFilesystem(Filesystem):
     def set_content(self, path, content, start=-1):
         path = self.convert_local_to_real(path)
 
-        with open(path, "r+b") as f:
+        mode = "wb"
+        if path.exists():
+            mode = "r+b"
+
+        with open(path, mode) as f:
             if start != -1:
                 f.seek(start)
 
@@ -335,28 +339,19 @@ class MultiplexFilesystem(Filesystem):
         else:
             raise Exception()
 
-
-    def mkcol(self, path):
+    def create(self, path, dir=True):
         vfs = path.parts[0]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].mkcol(path.relative_to(vfs))
+            return self.filesystems[vfs].create(path.relative_to(vfs), dir)
         else:
-            return Status409()
+            raise Exception()
 
-    def move(self, path, destination):
-        vfssource = path.parts[0]
-        vfsdestination = path.parts[0]
-        if vfssource in self.filesystems and vfsdestination in self.filesystems:
-            return self.filesystems[vfssource].move(path.relative_to(vfssource), destination.relative_to(vfsdestination))
-        else:
-            return Status404()
-        
     def delete(self, path):
         vfs = path.parts[0]
         if vfs in self.filesystems:
             return self.filesystems[vfs].delete(path.relative_to(vfs))
         else:
-            return Status500()
+            raise Exception()
 
     def lock(self, path, lockowner):
         vfs = path.parts[0]
@@ -371,6 +366,7 @@ class MultiplexFilesystem(Filesystem):
             return self.filesystems[vfs].unlock(path.relative_to(vfs), locktoken)
         else:
             return Status500()
+
 
 
 def unixdate2iso8601(d):

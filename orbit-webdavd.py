@@ -1,12 +1,12 @@
 import http.server
 import io
-import sys
-import webdavdlib.filesystems
-import pathlib
-import urllib.parse
-from webdavdlib.exceptions import *
 import re
-import traceback
+from webdavdlib.exceptions import *
+from webdavdlib.filesystems import *
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from traceback import print_exc
+
 
 VERSION = "0.1"
 
@@ -36,7 +36,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
         #self.fs = webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
-        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"MultiplexTest" : webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")})
+        self.fs = MultiplexFilesystem({"MultiplexTest" : DirectoryFilesystem("C:/WebDAVTest/")})
         self.close_connection = False
         self.protocol_version = "HTTP/1.1"
 
@@ -57,7 +57,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def get_destination(self):
         destination = ""
         if self.headers.get("Destination"):
-            destination = urllib.parse.urlparse(self.headers.get("Destination")).path
+            destination = urlparse(self.headers.get("Destination")).path
 
         return destination
 
@@ -72,7 +72,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print("HEAD ", self.path)
 
         try:
-            filedata = self.fs.get_content(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+            filedata = self.fs.get_content(Path(unquote(self.path)).relative_to("/"))
             b = WriteBuffer(self.wfile)
             b.write(filedata)
 
@@ -80,7 +80,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(b.getSize()))
             self.end_headers()
         except Exception as e:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -88,7 +88,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print("GET ", self.path)
 
         try:
-            filedata = self.fs.get_content(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+            filedata = self.fs.get_content(Path(unquote(self.path)).relative_to("/"))
             b = WriteBuffer(self.wfile)
             b.write(filedata)
 
@@ -100,7 +100,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404, "Not Found")
             self.end_headers()
         except Exception as e:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -109,12 +109,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print(self.request_version, " PUT ", self.path, " Data:", len(data))
 
         try:
-            result = self.fs.set_content(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), data)
+            result = self.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
 
             self.send_response(204, "OK")
             self.end_headers()
         except Exception as e:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -136,21 +136,21 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
 
         try:
-            resqueue = [pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/").as_posix()]
+            resqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
             resdata = {}
 
-            depthqueue = [pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/").as_posix()]
+            depthqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
             while depth > 0:
                 cpqueue = depthqueue.copy()
                 for res in cpqueue:
-                    workingres = pathlib.Path(urllib.parse.unquote(res))
+                    workingres = Path(unquote(res))
                     for sub in self.fs.get_children(workingres):
                         resqueue.append(sub)
                         depthqueue.append(sub)
                 depth = depth-1
 
             for resource in resqueue:
-                workingres = pathlib.Path(urllib.parse.unquote(resource))
+                workingres = Path(unquote(resource))
                 resdata[workingres] = self.fs.get_props(workingres)
 
             w = WriteBuffer(self.wfile)
@@ -198,7 +198,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
         except Exception:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -207,12 +207,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print(self.request_version, " DELETE ", self.path)
 
         try:
-            self.fs.delete(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"))
+            self.fs.delete(Path(unquote(self.path)).relative_to("/"))
 
             self.send_response(204, "OK")
             self.end_headers()
         except Exception as e:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -221,12 +221,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         print(self.request_version, " MKCOL ", self.path, " Data:", len(data))
 
         try:
-            self.fs.create(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), dir=True)
+            self.fs.create(Path(unquote(self.path)).relative_to("/"), dir=True)
 
             self.send_response(201, "Created")
             self.end_headers()
         except Exception as e:
-            traceback.print_exc()
+            print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -234,7 +234,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
 
-        result = self.fs.move(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
+        result = self.fs.move(Path(unquote(self.path)).relative_to("/"), Path(unquote(destination)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
@@ -243,8 +243,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
 
-        result = self.fs.copy(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"),
-                              pathlib.Path(urllib.parse.unquote(destination)).relative_to("/"))
+        result = self.fs.copy(Path(unquote(self.path)).relative_to("/"),
+                              Path(unquote(destination)).relative_to("/"))
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
@@ -256,7 +256,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         if data != "":
             lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
 
-        result = self.fs.lock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), lockowner)
+        result = self.fs.lock(Path(unquote(self.path)).relative_to("/"), lockowner)
 
         if result.get_data() != None:
             w = WriteBuffer(self.wfile)
@@ -295,7 +295,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
 
-        result = self.fs.unlock(pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/"), locktoken)
+        result = self.fs.unlock(Path(unquote(self.path)).relative_to("/"), locktoken)
 
         self.send_response(result.get_code(), result.get_name())
         self.send_header("Content-Length", 0)
