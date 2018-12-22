@@ -202,8 +202,8 @@ class DirectoryFilesystem(Filesystem):
         elif prop == "D:getcontentlength":
             return path.stat().st_size
 
-        #elif prop == "D:name" or prop == "D:displayname":
-        #    return path.relative_to(self.basepath).name
+        elif prop == "D:name" or prop == "D:displayname":
+            return path.relative_to(self.basepath).name
 
         elif prop == "D:resourcetype":
             if path.is_file():

@@ -29,14 +29,38 @@ class WriteBuffer:
         return len(self.buf.getvalue())
 
 class WebDAVServer(http.server.ThreadingHTTPServer):
-    pass
+    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
+        http.server.ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
+
+        self.locks = {}
+
+    def get_lock(self, uid):
+        if uid in self.locks:
+            return self.locks[uid]
+        else:
+            return None
+
+    def set_lock(self, uid, lock):
+        if uid in self.locks:
+            raise Exception()
+        else:
+            self.locks[uid] = lock
+
+    def clear_lock(self, uid):
+        if uid in self.locks:
+            raise Exception()
+        else:
+            del self.locks[uid]
 
 
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
-        #self.fs = webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
-        self.fs = MultiplexFilesystem({"MultiplexTest" : DirectoryFilesystem("C:/WebDAVTest/")})
+        self.fs = MultiplexFilesystem(
+            {
+                "MultiplexTest" : DirectoryFilesystem("C:/WebDAVTest/"),
+                "Benutzer": DirectoryFilesystem("C:/Users/Daniel/")
+             })
         self.close_connection = False
         self.protocol_version = "HTTP/1.1"
 
@@ -76,11 +100,13 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             b = WriteBuffer(self.wfile)
             b.write(filedata)
 
+            print("204 OK")
             self.send_response(204, "OK")
             self.send_header("Content-Length", str(b.getSize()))
             self.end_headers()
         except Exception as e:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -92,15 +118,18 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             b = WriteBuffer(self.wfile)
             b.write(filedata)
 
+            print("200 OK")
             self.send_response(200, "OK")
             self.send_header("Content-Length", str(b.getSize()))
             self.end_headers()
             b.flush()
         except FileNotFoundError:
+            print("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
         except Exception as e:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -111,10 +140,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         try:
             result = self.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
 
+            print("204 OK")
             self.send_response(204, "OK")
             self.end_headers()
         except Exception as e:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -188,6 +219,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 w.write("</D:response>\n")
             w.write("</D:multistatus>\n")
 
+            print("207 Multi-Status")
             self.send_response(207, "Multi-Status")  # Multi-Status
             self.send_header("Content-Type", "text/xml")
             self.send_header("Charset", "utf-8")
@@ -195,10 +227,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             w.flush()
         except NoSuchFileException:
+            print("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
         except Exception:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -209,10 +243,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         try:
             self.fs.delete(Path(unquote(self.path)).relative_to("/"))
 
+            print("204 OK")
             self.send_response(204, "OK")
             self.end_headers()
         except Exception as e:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
@@ -223,10 +259,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         try:
             self.fs.create(Path(unquote(self.path)).relative_to("/"), dir=True)
 
+            print("201 Created")
             self.send_response(201, "Created")
             self.end_headers()
         except Exception as e:
             print_exc()
+            print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
 
