@@ -132,7 +132,7 @@ class DirectoryFilesystem(Filesystem):
     def get_content(self, path, start=-1, end=-1):
         path = self.convert_local_to_real(path)
 
-        with open(path, "rb") as f:
+        with open(path, "r+b") as f:
             if start != -1:
                 f.seek(start)
 
@@ -144,7 +144,7 @@ class DirectoryFilesystem(Filesystem):
     def set_content(self, path, content, start=-1):
         path = self.convert_local_to_real(path)
 
-        with open(path, "wb") as f:
+        with open(path, "r+b") as f:
             if start != -1:
                 f.seek(start)
 
@@ -198,8 +198,8 @@ class DirectoryFilesystem(Filesystem):
         elif prop == "D:getcontentlength":
             return path.stat().st_size
 
-        elif prop == "D:name" or prop == "D:displayname":
-            return path.relative_to(self.basepath).name
+        #elif prop == "D:name" or prop == "D:displayname":
+        #    return path.relative_to(self.basepath).name
 
         elif prop == "D:resourcetype":
             if path.is_file():
@@ -289,40 +289,52 @@ class MultiplexFilesystem(Filesystem):
     def __init__(self, filesystems):
         self.filesystems = filesystems
 
-    def propfind(self, path, depth, reslist=None):
-        path = pathlib.Path(path)
-
+    def get_props(self, path, props=STDPROP):
         if path == pathlib.Path("."):
-            # Root path, need to construct virtual folders
-            res = []
-            root = webdavdlib.WebDAVResource()
-            root.add_property(HrefProperty("/."))
-            root.add_property(LastAccessedProperty(0))
-            root.add_property(LastModifiedProperty(0))
-            root.add_property(CreationDateProperty(0))
-            root.add_property(SupportedLockProperty())
-            root.add_property(LockDiscoveryProperty())
-            root.add_property(ResourceTypeProperty("<D:collection/>"))
-            root.add_property(EtagProperty("\"" + str(random.getrandbits(128)) + "\""))
-            res.append(root)
-            for prefix, fs in self.filesystems.items():
-                propresults = fs.propfind(".", depth=depth-1, reslist=[]).get_data()
-                if propresults == None:
-                  continue
-                for p in propresults:
-                    p.get_property(HrefProperty).set_value("/" + prefix + p.get_property(HrefProperty).get_value())
-                res.extend(propresults)
-
-
-            return Status207([i for i in res if i is not None])
-
+            # Root path, need to construct virtual folder
+            return {"D:status" : "200 OK",
+                    "D:name" : "/",
+                    "D:creationdate" : unixdate2httpdate(0),
+                    "D:lastaccessed" : unixdate2httpdate(0),
+                    "D:lastmodified" : unixdate2httpdate(0),
+                    "D:resourcetype" : "<D:collection/>"}
         else:
             vfs = path.parts[0]
             if vfs in self.filesystems:
-                res = self.filesystems[vfs].propfind(path.relative_to(vfs), depth=depth, reslist=[]).get_data()
-                return Status207([i for i in res if i is not None])
+                return self.filesystems[vfs].get_props(path.relative_to(vfs), props)
             else:
-                return Status207()
+                raise NoSuchFileException()
+
+    def get_children(self, path):
+        if path == pathlib.Path("."):
+            children = []
+            for cpath, fs in self.filesystems.items():
+                children.append(pathlib.Path("/" + cpath).relative_to("/").as_posix())
+            return children
+        else:
+            vfs = path.parts[0]
+            if vfs in self.filesystems:
+                children = []
+                for cpath in self.filesystems[vfs].get_children(path.relative_to(vfs)):
+                    children.append(pathlib.Path("/" + vfs + "/" + cpath).relative_to("/").as_posix())
+                return children
+            else:
+                return []
+
+    def get_content(self, path, start=-1, end=-1):
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].get_content(path.relative_to(vfs), start, end)
+        else:
+            raise NoSuchFileException()
+
+    def set_content(self, path, content, start=-1):
+        vfs = path.parts[0]
+        if vfs in self.filesystems:
+            return self.filesystems[vfs].set_content(path.relative_to(vfs), content, start)
+        else:
+            raise Exception()
+
 
     def mkcol(self, path):
         vfs = path.parts[0]
@@ -338,21 +350,7 @@ class MultiplexFilesystem(Filesystem):
             return self.filesystems[vfssource].move(path.relative_to(vfssource), destination.relative_to(vfsdestination))
         else:
             return Status404()
-
-    def get(self, path):
-        vfs = path.parts[0]
-        if vfs in self.filesystems:
-            return self.filesystems[vfs].get(path.relative_to(vfs))
-        else:
-            return Status404()
-
-    def put(self, path, data):
-        vfs = path.parts[0]
-        if vfs in self.filesystems:
-            return self.filesystems[vfs].put(path.relative_to(vfs), data)
-        else:
-            return Status500()
-
+        
     def delete(self, path):
         vfs = path.parts[0]
         if vfs in self.filesystems:

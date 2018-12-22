@@ -35,9 +35,10 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
 class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.server_version = "orbit-webdavd/%s" % (VERSION,)
-        self.fs =webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
-        self.close_connection = True
-        self.protocol_version = "HTTP/1.0"
+        #self.fs = webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")
+        self.fs = webdavdlib.filesystems.MultiplexFilesystem({"MultiplexTest" : webdavdlib.filesystems.DirectoryFilesystem("C:/WebDAVTest/")})
+        self.close_connection = False
+        self.protocol_version = "HTTP/1.1"
 
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
@@ -140,17 +141,16 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
             depthqueue = [pathlib.Path(urllib.parse.unquote(self.path)).relative_to("/").as_posix()]
             while depth > 0:
-                cpqueue = depthqueue
+                cpqueue = depthqueue.copy()
                 for res in cpqueue:
                     workingres = pathlib.Path(urllib.parse.unquote(res))
                     for sub in self.fs.get_children(workingres):
                         resqueue.append(sub)
-                        cpqueue.append(sub)
+                        depthqueue.append(sub)
                 depth = depth-1
 
             for resource in resqueue:
                 workingres = pathlib.Path(urllib.parse.unquote(resource))
-
                 resdata[workingres] = self.fs.get_props(workingres)
 
             w = WriteBuffer(self.wfile)
@@ -198,6 +198,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
         except Exception:
+            traceback.print_exc()
             self.send_response(500, "Server Error")
             self.end_headers()
 
