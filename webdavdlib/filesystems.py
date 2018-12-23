@@ -27,8 +27,6 @@ def getdirsize(path):
 # TODO: Add default allprops
 STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname"]
 class Filesystem(object):
-
-
     def get_props(self, path, props=STDPROP):
         """
         Get properties of resource described by path.

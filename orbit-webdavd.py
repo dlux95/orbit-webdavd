@@ -1,6 +1,7 @@
 import http.server
 import io
 import re
+from webdavdlib import Lock
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 from pathlib import Path
@@ -294,38 +295,41 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         if data != "":
             lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
 
-        result = self.fs.lock(Path(unquote(self.path)).relative_to("/"), lockowner)
+        if not lockowner == None:
+            uid = self.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
+            lock = self.get_lock(uid)
+            if lock == None:
+                lock = Lock(uid, lockowner, "exclusive", "infinity", "8600")
+                self.set_lock(uid, lock)
+                w = WriteBuffer(self.wfile)
+                w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
+                w.write("<D:prop xmlns:D=\"DAV:\">")
+                w.write("<D:lockdiscovery>")
+                w.write("<D:activelock>")
+                w.write("<D:locktype><D:write/></D:locktype>")
+                w.write("<D:lockscope><D:%s/></D:lockscope>" % lock.mode)
+                w.write("<D:depth>%s</D:depth>" % lock.depth)
+                w.write("<D:owner>")
+                w.write("<D:href>%s</D:href>" % lock.owner)
+                w.write("</D:owner>")
+                w.write("<D:timeout>Infinite</D:timeout>")
+                w.write("<D:locktoken><D:href>opaquelocktoken:%s</D:href></D:locktoken>" % lock.token)
+                w.write("</D:activelock>")
+                w.write("</D:lockdiscovery>")
+                w.write("</D:prop>")
 
-        if result.get_data() != None:
-            w = WriteBuffer(self.wfile)
-            w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
-            w.write("<D:prop xmlns:D=\"DAV:\">")
-            w.write("<D:lockdiscovery>")
-            w.write("<D:activelock>")
-            w.write("<D:locktype><D:write/></D:locktype>")
-            w.write("<D:lockscope><D:exclusive/></D:lockscope>")
-            w.write("<D:depth>Infinity</D:depth>")
-            w.write("<D:owner>")
-            w.write("<D:href>" + str(lockowner) + "</D:href>")
-            w.write("</D:owner>")
-            w.write("<D:timeout>Infinite</D:timeout>")
-            w.write("<D:locktoken><D:href>opaquelocktoken:" + result.get_data()[0] + "</D:href></D:locktoken>")
-            w.write("</D:activelock>")
-            w.write("</D:lockdiscovery>")
-            w.write("</D:prop>")
+                self.send_response(200, "OK")
+                self.send_header("Lock-Token", "<opaquelocktoken:%s>" % lock.token)
+                self.send_header("Content-type", 'text/xml')
+                self.send_header("Charset", '"utf-8"')
+                self.send_header("Content-Length", str(w.getSize()))
+                self.end_headers()
 
-        self.send_response(result.get_code(), result.get_name())
-        if result.get_data() != None:
-            self.send_header("Lock-Token", "<opaquelocktoken:" + result.get_data()[0] + ">")
-            self.send_header("Content-type", 'text/xml')
-            self.send_header("Charset", '"utf-8"')
-            self.send_header("Content-Length", str(w.getSize()))
-        else:
-            self.send_header("Content-Length", 0)
-        self.end_headers()
-
-        if result.get_data() != None:
-            w.flush()
+                w.flush()
+            else:
+                self.send_response(409, "Conflict")
+                self.send_header("Content-Length", 0)
+                self.end_headers()
 
     def do_UNLOCK(self):
         data = self.get_data()
