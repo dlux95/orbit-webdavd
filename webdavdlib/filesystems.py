@@ -9,8 +9,6 @@ from webdavdlib.statuscodes import *
 import shutil
 from time import strftime, localtime, gmtime, timezone
 
-lockdatabase = []
-
 def getdirsize(path):
     total_size = 0
     start_path = path
@@ -240,6 +238,11 @@ class DirectoryFilesystem(Filesystem):
         else:
             return []
 
+    def get_uid(self, path):
+        path = self.convert_local_to_real(path)
+
+        return path.absolute().as_posix()
+
 
     def move(self, path, destination):
         realpath = self.basepath / path
@@ -275,6 +278,8 @@ class DirectoryFilesystem(Filesystem):
         realpath = self.basepath / path
 
         return Status204()
+
+
 
 
 
@@ -364,6 +369,16 @@ class MultiplexFilesystem(Filesystem):
             return self.filesystems[vfs].unlock(path.relative_to(vfs), locktoken)
         else:
             return Status500()
+
+    def get_uid(self, path):
+        if path == pathlib.Path("."):
+            return "root"
+        else:
+            vfs = path.parts[0]
+            if vfs in self.filesystems:
+                return self.filesystems[vfs].get_uid(path.relative_to(vfs))
+            else:
+                raise Exception()
 
 
 

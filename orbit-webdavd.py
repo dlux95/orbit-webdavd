@@ -62,10 +62,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 "MultiplexTest" : DirectoryFilesystem("C:/WebDAVTest/"),
                 "Benutzer": DirectoryFilesystem("C:/Users/Daniel/")
              })
-        self.close_connection = False
-        self.protocol_version = "HTTP/1.1"
+
 
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+        self.close_connection = True
+        self.protocol_version = "HTTP/1.0"
+        print("New worker thread")
 
     def get_depth(self):
         depth = "infinity"
@@ -152,7 +154,6 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
     def do_OPTIONS(self):
-        request = webdavdlib.WebDAVRequest(self.headers, self.get_data())
         print(self.request_version, " OPTIONS ", self.path)
         self.send_response(200, self.server_version)
         self.send_header("Allow", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPATCH, MKCOL, LOCK, UNLOCK, MOVE, COPY")
@@ -161,6 +162,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("DAV", "1, 2")  # OSX Finder need Ver 2, if Ver 1 -- read only
         self.send_header("MS-Author-Via", "DAV")
         self.end_headers()
+        
 
     def do_PROPFIND(self):
         data = self.get_data()
@@ -208,12 +210,27 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                         w.write("<%s>%s</%s>\n" % (propname, propvalue, propname))
 
                 if propcount > 0:
-                    w.write("<D:supportedlock>\n")
-                    w.write("<D:lockentry>\n")
-                    w.write("<D:lockscope><D:exclusive/></D:lockscope>\n")
-                    w.write("<D:locktype><D:write/></D:locktype>\n")
-                    w.write("</D:lockentry>\n")
-                    w.write("</D:supportedlock>\n")
+                    uid = self.fs.get_uid(workingres)
+                    if server.get_lock(uid) is None:
+                        w.write("<D:supportedlock>\n")
+                        w.write("<D:lockentry>\n")
+                        w.write("<D:lockscope><D:exclusive/></D:lockscope>\n")
+                        w.write("<D:locktype><D:write/></D:locktype>\n")
+                        w.write("</D:lockentry>\n")
+                        w.write("</D:supportedlock>\n")
+                    else:
+                        lock = server.get_lock(uid)
+                        w.write("<D:lockdiscovery>\n")
+                        w.write("<D:activelock>\n")
+                        w.write("<D:locktype><D:write/></D:locktype>\n")
+                        w.write("<D:lockscope><D:%s/></D:lockscope>\n" % lock.mode)
+                        w.write("<D:depth>%s</D:depth>\n" % lock.depth)
+                        w.write("<D:owner>%s</D:owner>\n" % lock.owner)
+                        w.write("<D:timeout>%s</D:timeout>\n" % lock.timeout)
+                        w.write("<D:locktoken><D:href>opaquelocktoken:%s</D:href></D:locktoken>" % lock.token)
+                        w.write("</D:lockdiscovery>\n")
+                        w.write("</D:activelock>\n")
+
                 w.write("</D:prop>\n")
                 w.write("<D:status>HTTP/1.1 %s</D:status>\n" % props["D:status"])
                 w.write("</D:propstat>\n")
@@ -227,15 +244,18 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(w.getSize()))
             self.end_headers()
             w.flush()
+            
         except NoSuchFileException:
             print("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
+            
         except Exception:
             print_exc()
             print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
+            
 
 
     def do_DELETE(self):
@@ -247,11 +267,13 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             print("204 OK")
             self.send_response(204, "OK")
             self.end_headers()
+            
         except Exception as e:
             print_exc()
             print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
+            
 
     def do_MKCOL(self):
         data = self.get_data()
@@ -263,11 +285,13 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             print("201 Created")
             self.send_response(201, "Created")
             self.end_headers()
+            
         except Exception as e:
             print_exc()
             print("500 Server Error")
             self.send_response(500, "Server Error")
             self.end_headers()
+            
 
     def do_MOVE(self):
         destination = self.get_destination()
@@ -277,6 +301,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
+        
 
     def do_COPY(self):
         destination = self.get_destination()
@@ -287,6 +312,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         self.send_response(result.get_code(), result.get_name())
         self.end_headers()
+        
 
     def do_LOCK(self):
         data = self.get_data()
@@ -297,10 +323,10 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         if not lockowner == None:
             uid = self.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
-            lock = self.get_lock(uid)
+            lock = server.get_lock(uid)
             if lock == None:
-                lock = Lock(uid, lockowner, "exclusive", "infinity", "8600")
-                self.set_lock(uid, lock)
+                lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
+                server.set_lock(uid, lock)
                 w = WriteBuffer(self.wfile)
                 w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
                 w.write("<D:prop xmlns:D=\"DAV:\">")
@@ -312,7 +338,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 w.write("<D:owner>")
                 w.write("<D:href>%s</D:href>" % lock.owner)
                 w.write("</D:owner>")
-                w.write("<D:timeout>Infinite</D:timeout>")
+                w.write("<D:timeout>%s</D:timeout>" % lock.timeout)
                 w.write("<D:locktoken><D:href>opaquelocktoken:%s</D:href></D:locktoken>" % lock.token)
                 w.write("</D:activelock>")
                 w.write("</D:lockdiscovery>")
@@ -326,10 +352,12 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
 
                 w.flush()
+                
             else:
                 self.send_response(409, "Conflict")
                 self.send_header("Content-Length", 0)
                 self.end_headers()
+                
 
     def do_UNLOCK(self):
         data = self.get_data()
@@ -342,6 +370,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(result.get_code(), result.get_name())
         self.send_header("Content-Length", 0)
         self.end_headers()
+        
 
     def log_message(self, format, *args):
         pass
@@ -350,5 +379,5 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = WebDAVServer(("", 8080), WebDAVRequestHandler)
+    server = WebDAVServer(("", 8081), WebDAVRequestHandler)
     server.serve_forever()
