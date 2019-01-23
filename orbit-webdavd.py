@@ -7,6 +7,8 @@ from webdavdlib.filesystems import *
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from traceback import print_exc
+from time import strftime
+import base64
 
 
 VERSION = "0.1"
@@ -48,7 +50,7 @@ class WebDAVServer(http.server.ThreadingHTTPServer):
             self.locks[uid] = lock
 
     def clear_lock(self, uid):
-        if uid in self.locks:
+        if not uid in self.locks:
             raise Exception()
         else:
             del self.locks[uid]
@@ -65,9 +67,9 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
         http.server.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
-        self.close_connection = True
-        self.protocol_version = "HTTP/1.0"
         print("New worker thread")
+
+        self.user = None
 
     def get_depth(self):
         depth = "infinity"
@@ -95,8 +97,29 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
         return data
 
+    def require_auth(self):
+        print("Require authentication")
+        if self.headers.get('Authorization'):
+            print("Header present")
+            base = base64.b64decode(self.headers.get('Authorization').strip("Basic "))
+            username, password = base.decode().split(":")
+            print("Auth ", username, " ", password)
+            if username == password: # TODO replace with pam
+                self.user = username
+                return False
+
+        print("Answer 401")
+        self.send_response(401, 'Authorization Required')
+        self.send_header('WWW-Authenticate', 'Basic realm="WebDav Auth"')
+        self.send_header('Content-type', 'text/html')
+        self.send_header('Content-length', '0')
+        self.end_headers()
+        return True
+
     def do_HEAD(self):
         print("HEAD ", self.path)
+        if self.require_auth():
+            return
 
         try:
             filedata = self.fs.get_content(Path(unquote(self.path)).relative_to("/"))
@@ -115,6 +138,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         print("GET ", self.path)
+        if self.require_auth():
+            return
 
         try:
             filedata = self.fs.get_content(Path(unquote(self.path)).relative_to("/"))
@@ -130,6 +155,10 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
             print("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
+        except NoSuchFileException:
+            print("404 Not Found")
+            self.send_response(404, "Not Found")
+            self.end_headers()
         except Exception as e:
             print_exc()
             print("500 Server Error")
@@ -139,6 +168,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_PUT(self):
         data = self.get_data()
         print(self.request_version, " PUT ", self.path, " Data:", len(data))
+        if self.require_auth():
+            return
 
         try:
             result = self.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
@@ -155,6 +186,7 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         print(self.request_version, " OPTIONS ", self.path)
+
         self.send_response(200, self.server_version)
         self.send_header("Allow", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPATCH, MKCOL, LOCK, UNLOCK, MOVE, COPY")
         self.send_header("Content-Length", "0")
@@ -168,6 +200,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
         data = self.get_data()
         depth = self.get_depth()
         print(self.request_version, " PROPFIND ", self.path, " Depth: ", depth, " Data:", len(data))
+        if self.require_auth():
+            return
 
         try:
             resqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
@@ -260,6 +294,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         print(self.request_version, " DELETE ", self.path)
+        if self.require_auth():
+            return
 
         try:
             self.fs.delete(Path(unquote(self.path)).relative_to("/"))
@@ -278,6 +314,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_MKCOL(self):
         data = self.get_data()
         print(self.request_version, " MKCOL ", self.path, " Data:", len(data))
+        if self.require_auth():
+            return
 
         try:
             self.fs.create(Path(unquote(self.path)).relative_to("/"), dir=True)
@@ -296,6 +334,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_MOVE(self):
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
+        if self.require_auth():
+            return
 
         result = self.fs.move(Path(unquote(self.path)).relative_to("/"), Path(unquote(destination)).relative_to("/"))
 
@@ -306,6 +346,8 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_COPY(self):
         destination = self.get_destination()
         print(self.request_version, " MOVE ", self.path, " to ", destination)
+        if self.require_auth():
+            return
 
         result = self.fs.copy(Path(unquote(self.path)).relative_to("/"),
                               Path(unquote(destination)).relative_to("/"))
@@ -317,6 +359,9 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_LOCK(self):
         data = self.get_data()
         print(self.request_version, " LOCK ", self.path, " Data:", len(data))
+        if self.require_auth():
+            return
+
         lockowner = None
         if data != "":
             lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
@@ -362,8 +407,19 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_UNLOCK(self):
         data = self.get_data()
         print(self.request_version, " UNLOCK ", self.path, "Data:", len(data))
+        if self.require_auth():
+            return
 
         locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
+
+        uid = self.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
+
+        if not server.get_lock(uid) is None:
+            lock = server.get_lock(uid)
+            if lock.token == locktoken:
+                server.clear_lock(uid)
+            else:
+                print("Wrong locktoken on resource")
 
         result = self.fs.unlock(Path(unquote(self.path)).relative_to("/"), locktoken)
 
@@ -379,5 +435,5 @@ class WebDAVRequestHandler(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = WebDAVServer(("", 8081), WebDAVRequestHandler)
+    server = WebDAVServer(("", 8080), WebDAVRequestHandler)
     server.serve_forever()
