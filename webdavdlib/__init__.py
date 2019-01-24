@@ -2,6 +2,7 @@ import random
 import logging
 import sys
 import io
+from jinja2 import Template
 from time import strftime, localtime, gmtime, timezone
 
 class Lock(object):
@@ -46,7 +47,6 @@ class WriteBuffer:
         self.buf = io.BytesIO()
 
     def write(self, s):
-
         if isinstance(s, str):
             self.buf.write(s.encode("utf-8"))  # add unicode(s,'utf-8') for chinese code.
         else:
@@ -65,3 +65,9 @@ def unixdate2iso8601(d):
 
 def unixdate2httpdate(d):
     return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))
+
+def get_template(filename):
+    with open(filename) as file_:
+        template = Template(file_.read())
+
+    return template

@@ -2,13 +2,14 @@ import io
 import re
 import logging
 import base64
+import json
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from traceback import print_exc
 from time import strftime
 
-from webdavdlib import Lock, SystemdHandler, WriteBuffer
+from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 
@@ -23,6 +24,11 @@ class WebDAVServer(ThreadingHTTPServer):
                 "MultiplexTest": DirectoryFilesystem("C:/WebDAVTest/"),
                 "Benutzer": DirectoryFilesystem("C:/Users/Daniel/")
             })
+
+        self.templates = {
+            "lock" : get_template("webdavdlib/templates/lock.template.jinja2"),
+            "propfind" : get_template("webdavdlib/templates/propfind.template.jinja2")
+        }
         self.locks = {}
 
     def get_lock(self, uid):
@@ -91,14 +97,18 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
     def require_auth(self):
         if self.headers.get('Authorization'):
-            base = base64.b64decode(self.headers.get('Authorization').strip("Basic "))
-            username, password = base.decode().split(":")
-            if username == password: # TODO replace with pam
-                self.log.debug("Authentication for %s successful" % username)
-                self.user = username
-                return False
-            else:
-                self.log.debug("Authentication for %s failed" % username)
+            self.log.debug("Authorization Header: " + str(self.headers))
+            try:
+                base = base64.b64decode(self.headers.get('Authorization')[6:])
+                username, password = base.decode().split(":")
+                if username == password: # TODO replace with pam
+                    self.log.debug("Authentication for %s successful" % username)
+                    self.user = username
+                    return False
+                else:
+                    self.log.debug("Authentication for %s failed" % username)
+            except:
+                self.log.exception("Authentication failed")
 
         self.log.debug("Unauthenticated, sending 401")
         self.send_response(401, 'Authorization Required')
@@ -173,6 +183,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 
     def do_OPTIONS(self):
+        if self.require_auth():
+            return
         self.log.info("[%s] OPTIONS Request on %s" % (self.user, self.path))
 
         self.send_response(200, self.server_version)
@@ -181,6 +193,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.send_header("X-Server-Copyright", self.server_version)
         self.send_header("DAV", "1, 2")  # OSX Finder need Ver 2, if Ver 1 -- read only
         self.send_header("MS-Author-Via", "DAV")
+        self.send_header('WWW-Authenticate', 'Basic realm="WebDav Auth"')
         self.end_headers()
         
 
@@ -209,56 +222,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             for resource in resqueue:
                 workingres = Path(unquote(resource))
                 resdata[workingres] = self.server.fs.get_props(workingres)
+                resdata[workingres]["lock"] = self.server.get_lock(self.server.fs.get_uid(workingres))
 
             w = WriteBuffer(self.wfile)
-            w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n")
-            w.write("<D:multistatus xmlns:D=\"DAV:\" xmlns:Z=\"urn:schemas-microsoft-com:\"   xmlns:Office=\"urn:schemas-microsoft-com:office:office\">\n")
-
-
-            for res, props in resdata.items():
-                w.write("<D:response>\n")
-                w.write("<D:href>/%s</D:href>\n" % (res.as_posix().strip("."),))
-                w.write("<D:propstat>\n")
-                w.write("<D:prop>\n")
-                propcount = 0
-                for propname, propvalue in props.items():
-                    if propname == "D:status":
-                        continue
-
-                    propcount = propcount + 1
-                    if propvalue is True or propvalue is False:
-                        if propvalue is True:
-                            w.write("<%s/>\n" % (propname,))
-                    else:
-                        w.write("<%s>%s</%s>\n" % (propname, propvalue, propname))
-
-                if propcount > 0:
-                    uid = self.server.fs.get_uid(workingres)
-                    if server.get_lock(uid) is None:
-                        w.write("<D:supportedlock>\n")
-                        w.write("<D:lockentry>\n")
-                        w.write("<D:lockscope><D:exclusive/></D:lockscope>\n")
-                        w.write("<D:locktype><D:write/></D:locktype>\n")
-                        w.write("</D:lockentry>\n")
-                        w.write("</D:supportedlock>\n")
-                    else:
-                        lock = server.get_lock(uid)
-                        w.write("<D:lockdiscovery>\n")
-                        w.write("<D:activelock>\n")
-                        w.write("<D:locktype><D:write/></D:locktype>\n")
-                        w.write("<D:lockscope><D:%s/></D:lockscope>\n" % lock.mode)
-                        w.write("<D:depth>%s</D:depth>\n" % lock.depth)
-                        w.write("<D:owner>%s</D:owner>\n" % lock.owner)
-                        w.write("<D:timeout>%s</D:timeout>\n" % lock.timeout)
-                        w.write("<D:locktoken><D:href>opaquelocktoken:%s</D:href></D:locktoken>" % lock.token)
-                        w.write("</D:lockdiscovery>\n")
-                        w.write("</D:activelock>\n")
-
-                w.write("</D:prop>\n")
-                w.write("<D:status>HTTP/1.1 %s</D:status>\n" % props["D:status"])
-                w.write("</D:propstat>\n")
-                w.write("</D:response>\n")
-            w.write("</D:multistatus>\n")
+            w.write(self.server.templates["propfind"].render(resdata=resdata))
 
             self.log.debug("207 Multi-Status")
             self.send_response(207, "Multi-Status")  # Multi-Status
@@ -355,23 +322,9 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             lock = server.get_lock(uid)
             if lock == None:
                 lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
-                server.set_lock(uid, lock)
+                self.server.set_lock(uid, lock)
                 w = WriteBuffer(self.wfile)
-                w.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>")
-                w.write("<D:prop xmlns:D=\"DAV:\">")
-                w.write("<D:lockdiscovery>")
-                w.write("<D:activelock>")
-                w.write("<D:locktype><D:write/></D:locktype>")
-                w.write("<D:lockscope><D:%s/></D:lockscope>" % lock.mode)
-                w.write("<D:depth>%s</D:depth>" % lock.depth)
-                w.write("<D:owner>")
-                w.write("<D:href>%s</D:href>" % lock.owner)
-                w.write("</D:owner>")
-                w.write("<D:timeout>%s</D:timeout>" % lock.timeout)
-                w.write("<D:locktoken><D:href>opaquelocktoken:%s</D:href></D:locktoken>" % lock.token)
-                w.write("</D:activelock>")
-                w.write("</D:lockdiscovery>")
-                w.write("</D:prop>")
+                w.write(self.server.templates["lock"].render(lock=lock))
 
                 self.log.debug("200 OK")
                 self.send_response(200, "OK")
@@ -407,7 +360,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 server.clear_lock(uid)
 
                 self.log.debug("200 OK")
-                self.send_response("200 OK")
+                self.send_response(200, "OK")
                 self.send_header("Content-Length", 0)
                 self.end_headers()
             else:

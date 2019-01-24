@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:"   xmlns:Office="urn:schemas-microsoft-com:office:office">
+    {%  for resource, props in resdata.items() %}
+        <D:response>
+            <D:href>/{{ resource.as_posix().strip(".") }}</D:href>
+            <D:propstat>
+                <D:prop>
+                    {% for propname, propvalue in props.items() %}
+                        {% if propvalue == True %}
+                            <{{ propname }}/>
+                        {% else %}
+                            <{{ propname }}>{{ propvalue }}</{{ propname }}>
+                        {% endif %}
+                    {% endfor %}
+                    {% if not props["lock"] == None %}
+                        <D:lockdiscovery>
+                            <D:activelock>
+                                <D:locktype><D:write/></D:locktype>
+                                <D:lockscope><D:{{ props["lock"].mode }}/></D:lockscope>
+                                <D:depth>{{ props["lock"].depth }}</D:depth>
+                                <D:owner>{{ props["lock"].owner }}</D:owner>
+                                <D:timeout>{{ props["lock"].timeout }}</D:timeout>
+                                <D:locktoken><D:href>opaquelocktoken:{{ props["lock"].token }}</D:href></D:locktoken>
+                            </D:activelock>
+                        </D:lockdiscovery>
+                    {% else %}
+                        <D:supportedlock>
+                            <D:lockentry>
+                                <D:lockscope><D:exclusive/></D:lockscope>
+                                <D:locktype><D:write/></D:locktype>
+                            </D:lockentry>
+                        </D:supportedlock>
+                    {% endif %}
+                </D:prop>
+            <D:status>HTTP/1.1 {{ props["D:status"] }}</D:status>
+            </D:propstat>
+        </D:response>
+    {% endfor %}
+</D:multistatus>
