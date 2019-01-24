@@ -55,7 +55,6 @@ class WebDAVServer(ThreadingHTTPServer):
 class WebDAVRequestHandler(BaseHTTPRequestHandler):
     worker = 0
 
-
     def __init__(self, request, client_address, server):
         self.log = logging.getLogger("WebDAVRequestHandler[%03d]" % WebDAVRequestHandler.worker)
         WebDAVRequestHandler.worker += 1
@@ -66,8 +65,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.user = None
 
         BaseHTTPRequestHandler.__init__(self, request, client_address, server)
-
-
 
     def get_depth(self):
         depth = "infinity"
@@ -97,7 +94,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
     def require_auth(self):
         if self.headers.get('Authorization'):
-            self.log.debug("Authorization Header: " + str(self.headers))
             try:
                 base = base64.b64decode(self.headers.get('Authorization')[6:])
                 username, password = base.decode().split(":")
@@ -118,25 +114,28 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         return True
 
+    def handle_one_request(self):
+        try:
+            BaseHTTPRequestHandler.handle_one_request(self)
+        except:
+            self.log.exception("500 Server Error")
+            self.send_response(500, "Server Error")
+            self.end_headers()
+
     def do_HEAD(self):
         if self.require_auth():
             return
 
         self.log.info("[%s] HEAD Request on %s" % (self.user, self.path))
 
-        try:
-            filedata = self.server.fs.get_content(Path(unquote(self.path)).relative_to("/"))
-            b = WriteBuffer(self.wfile)
-            b.write(filedata)
+        filedata = self.server.fs.get_content(Path(unquote(self.path)).relative_to("/"))
+        b = WriteBuffer(self.wfile)
+        b.write(filedata)
 
-            self.log.debug("204 OK")
-            self.send_response(204, "OK")
-            self.send_header("Content-Length", str(b.getSize()))
-            self.end_headers()
-        except Exception as e:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
+        self.log.debug("204 OK")
+        self.send_response(204, "OK")
+        self.send_header("Content-Length", str(b.getSize()))
+        self.end_headers()
 
     def do_GET(self):
         if self.require_auth():
@@ -158,10 +157,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.log.debug("200 OK")
             self.send_response(404, "Not Found")
             self.end_headers()
-        except Exception as e:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
 
     def do_PUT(self):
         if self.require_auth():
@@ -170,16 +165,11 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         data = self.get_data()
         self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(data)))
 
-        try:
-            result = self.server.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
+        result = self.server.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
 
-            self.log.debug("204 OK")
-            self.send_response(204, "OK")
-            self.end_headers()
-        except Exception as e:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
+        self.log.debug("204 OK")
+        self.send_response(204, "OK")
+        self.end_headers()
 
 
     def do_OPTIONS(self):
@@ -203,7 +193,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         data = self.get_data()
         depth = self.get_depth()
-        self.log.info("[%s] PROPFIND Request on %s with depth %d and length %d" % (self.user, self.path, depth, len(data)))
+        self.log.info("[%s] PROPFIND Request on %s with depth %s and length %d" % (self.user, self.path, depth, len(data)))
 
         try:
             resqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
@@ -239,32 +229,16 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
-            
-        except Exception:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
-            
-
 
     def do_DELETE(self):
         if self.require_auth():
             return
-
         self.log.info("[%s] DELETE Request on %s" % (self.user, self.path))
 
-        try:
-            self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
-
-            self.log.debug("204 OK")
-            self.send_response(204, "OK")
-            self.end_headers()
-            
-        except Exception as e:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
-            
+        self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
+        self.log.debug("204 OK")
+        self.send_response(204, "OK")
+        self.end_headers()
 
     def do_MKCOL(self):
         if self.require_auth():
@@ -273,17 +247,12 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         data = self.get_data()
         self.log.info("[%s] MKCOL Request on %s with length %d" % (self.user, self.path, len(data)))
 
-        try:
-            self.server.fs.create(Path(unquote(self.path)).relative_to("/"), dir=True)
+        self.server.fs.create(Path(unquote(self.path)).relative_to("/"), dir=True)
 
-            self.log.debug("201 Created")
-            self.send_response(201, "Created")
-            self.end_headers()
-            
-        except Exception as e:
-            self.log.exception("500 Server Error")
-            self.send_response(500, "Server Error")
-            self.end_headers()
+        self.log.debug("201 Created")
+        self.send_response(201, "Created")
+        self.end_headers()
+
             
 
     def do_MOVE(self):
@@ -335,7 +304,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
 
                 w.flush()
-                
             else:
                 self.log.debug("409 Conflict")
                 self.send_response(409, "Conflict")

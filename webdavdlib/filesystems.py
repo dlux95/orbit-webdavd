@@ -6,6 +6,7 @@ import random
 import hashlib
 import os
 import shutil
+import logging
 from webdavdlib import unixdate2httpdate, unixdate2iso8601
 
 
@@ -114,6 +115,7 @@ class HomeFilesystem(Filesystem):
 
 
 class DirectoryFilesystem(Filesystem):
+    log = logging.getLogger("DirectoryFilesystem")
     def __init__(self, basepath):
         self.basepath = pathlib.Path(basepath)
 
@@ -130,6 +132,7 @@ class DirectoryFilesystem(Filesystem):
 
     def get_content(self, path, start=-1, end=-1):
         path = self.convert_local_to_real(path)
+        self.log.debug("get_content(%s)" % path.as_posix())
 
         with open(path, "r+b") as f:
             if start != -1:
@@ -142,6 +145,7 @@ class DirectoryFilesystem(Filesystem):
 
     def set_content(self, path, content, start=-1):
         path = self.convert_local_to_real(path)
+        self.log.debug("set_content(%s)" % path.as_posix())
 
         mode = "wb"
         if path.exists():
@@ -155,6 +159,7 @@ class DirectoryFilesystem(Filesystem):
 
     def delete(self, path):
         path = self.convert_local_to_real(path)
+        self.log.debug("delete(%s)" % path.as_posix())
 
         if path.is_file():
             path.unlink()
@@ -163,6 +168,7 @@ class DirectoryFilesystem(Filesystem):
 
     def create(self, path, dir=True):
         path = self.convert_local_to_real(path)
+        self.log.debug("create(%s)" % path.as_posix())
 
         if dir:
             path.mkdir(parents=False, exist_ok=False)
@@ -171,6 +177,7 @@ class DirectoryFilesystem(Filesystem):
 
     def get_props(self, path, props=STDPROP):
         path = self.convert_local_to_real(path)
+        self.log.debug("get_props(%s)" % path.as_posix())
 
         if not path.exists():
             raise NoSuchFileException()
@@ -179,6 +186,7 @@ class DirectoryFilesystem(Filesystem):
 
         for prop in props:
             propdata[prop] = self._get_prop(path, prop)
+            self.log.debug("Property %s: %s" % (prop, propdata[prop]))
 
         return propdata
 
@@ -233,6 +241,8 @@ class DirectoryFilesystem(Filesystem):
 
     def get_children(self, path):
         path = self.convert_local_to_real(path)
+        self.log.debug("get_children(%s)" % path.as_posix())
+
         if path.is_dir():
             l = []
             for sub in path.iterdir():
@@ -243,6 +253,7 @@ class DirectoryFilesystem(Filesystem):
 
     def get_uid(self, path):
         path = self.convert_local_to_real(path)
+        self.log.debug("get_uid(%s)" % path.as_posix())
 
         return path.absolute().as_posix()
 
