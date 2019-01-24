@@ -95,8 +95,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
     def require_auth(self):
         if self.headers.get('Authorization'):
             try:
-                base = base64.b64decode(self.headers.get('Authorization')[6:])
-                username, password = base.decode().split(":")
+                base = base64.b64decode(self.headers.get('Authorization')[6:]).decode()
+                username, password = base.split(":")
                 if username == password: # TODO replace with pam
                     self.log.debug("Authentication for %s successful" % username)
                     self.user = username
@@ -154,7 +154,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             b.flush()
         except FileNotFoundError or NoSuchFileException:
-            self.log.debug("200 OK")
+            self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
 

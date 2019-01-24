@@ -35,9 +35,11 @@ class SystemdHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            msg = "%s %s %s\n" % (self.PREFIX[record.levelno], record.name, self.format(record))
-            self.stream.write(msg)
-            self.stream.flush()
+            raw = self.format(record)
+            for line in raw.split("\n"):
+                msg = "%s %s %s\n" % (self.PREFIX[record.levelno], record.name, line)
+                self.stream.write(msg)
+                self.stream.flush()
         except Exception:
             self.handleError(record)
 
