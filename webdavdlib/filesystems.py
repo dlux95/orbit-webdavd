@@ -5,9 +5,9 @@ import webdavdlib
 import random
 import hashlib
 import os
-from webdavdlib.statuscodes import *
 import shutil
-from time import strftime, localtime, gmtime, timezone
+from webdavdlib import unixdate2httpdate, unixdate2iso8601
+
 
 def getdirsize(path):
     total_size = 0
@@ -22,8 +22,11 @@ def getdirsize(path):
 
     return total_size
 
+
 # TODO: Add default allprops
 STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname"]
+
+
 class Filesystem(object):
     def get_props(self, path, props=STDPROP):
         """
@@ -244,51 +247,15 @@ class DirectoryFilesystem(Filesystem):
         return path.absolute().as_posix()
 
 
-    def move(self, path, destination):
-        realpath = self.basepath / path
-        realdestination = self.basepath / destination
-
-        try:
-            os.rename(realpath, realdestination)
-        except OSError:
-            return Status409()
-
-        return Status201()
-
-    def move(self, path, destination):
-        realpath = self.basepath / path
-        realdestination = self.basepath / destination
-
-        try:
-            shutil.copy(realpath, realdestination)
-        except OSError:
-            return Status409()
-
-        return Status201()
-
-    def lock(self, path, lockowner):
-        realpath = self.basepath / path
-
-
-        locktoken = str(random.getrandbits(128))
-
-        return Status201((locktoken, lockowner, realpath.relative_to(self.basepath).as_posix()))
-
-    def unlock(self, path, locktoken):
-        realpath = self.basepath / path
-
-        return Status204()
-
-
-
-
-
-
 class MySQLFilesystem(Filesystem):
     pass
 
 
 class RedisFilesystem(Filesystem):
+    pass
+
+
+class SystemFilesystem(Filesystem):
     pass
 
 
@@ -356,20 +323,6 @@ class MultiplexFilesystem(Filesystem):
         else:
             raise Exception()
 
-    def lock(self, path, lockowner):
-        vfs = path.parts[0]
-        if vfs in self.filesystems:
-            return self.filesystems[vfs].lock(path.relative_to(vfs), lockowner)
-        else:
-            return Status500()
-
-    def unlock(self, path, locktoken):
-        vfs = path.parts[0]
-        if vfs in self.filesystems:
-            return self.filesystems[vfs].unlock(path.relative_to(vfs), locktoken)
-        else:
-            return Status500()
-
     def get_uid(self, path):
         if path == pathlib.Path("."):
             return "root"
@@ -379,13 +332,3 @@ class MultiplexFilesystem(Filesystem):
                 return self.filesystems[vfs].get_uid(path.relative_to(vfs))
             else:
                 raise Exception()
-
-
-
-def unixdate2iso8601(d):
-    tz = timezone / 3600 # can it be fractional?
-    tz = '%+03d' % tz
-    return strftime('%Y-%m-%dT%H:%M:%S', localtime(d)) + tz + ':00'
-
-def unixdate2httpdate(d):
-    return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))

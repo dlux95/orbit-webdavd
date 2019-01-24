@@ -1,6 +1,8 @@
 import random
 import logging
 import sys
+import io
+from time import strftime, localtime, gmtime, timezone
 
 class Lock(object):
     def __init__(self, uid, owner, mode, depth, timeout):
@@ -37,3 +39,29 @@ class SystemdHandler(logging.Handler):
             self.stream.flush()
         except Exception:
             self.handleError(record)
+
+class WriteBuffer:
+    def __init__(self, w):
+        self.w = w
+        self.buf = io.BytesIO()
+
+    def write(self, s):
+
+        if isinstance(s, str):
+            self.buf.write(s.encode("utf-8"))  # add unicode(s,'utf-8') for chinese code.
+        else:
+            self.buf.write(s)
+    def flush(self):
+        self.w.write(self.buf.getvalue())
+        self.w.flush()
+
+    def getSize(self):
+        return len(self.buf.getvalue())
+
+def unixdate2iso8601(d):
+    tz = timezone / 3600 # can it be fractional?
+    tz = '%+03d' % tz
+    return strftime('%Y-%m-%dT%H:%M:%S', localtime(d)) + tz + ':00'
+
+def unixdate2httpdate(d):
+    return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))
