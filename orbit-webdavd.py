@@ -72,7 +72,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             depth = self.headers.get("Depth")
 
         if depth == "infinity":
-            depth = 10 # Not RFC compliant but performance enhancing
+            depth = 32  # Not RFC compliant but performance enhancing
         else:
             depth = int(depth)
 
