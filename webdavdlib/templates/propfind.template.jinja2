@@ -9,7 +9,9 @@
                         {% if propvalue == True %}
                             <{{ propname }}/>
                         {% else %}
-                            <{{ propname }}>{{ propvalue }}</{{ propname }}>
+                            {% if propname != "lock" %}
+                                <{{ propname }}>{{ propvalue }}</{{ propname }}>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
                     {% if not props["lock"] == None %}

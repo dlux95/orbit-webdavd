@@ -49,6 +49,7 @@ class WriteBuffer:
         self.buf = io.BytesIO()
 
     def write(self, s):
+        print(s)
         if isinstance(s, str):
             self.buf.write(s.encode("utf-8"))  # add unicode(s,'utf-8') for chinese code.
         else:
