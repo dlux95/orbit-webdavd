@@ -21,8 +21,7 @@ class WebDAVServer(ThreadingHTTPServer):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self.fs = MultiplexFilesystem(
             {
-                "Temp": DirectoryFilesystem("/tmp"),
-                "Root": DirectoryFilesystem("/root/")
+                "Temp": DirectoryFilesystem("C:/WebDAVTest"),
             })
 
         self.templates = {
@@ -249,20 +248,24 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
 
-        locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
+        try:
+            locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
 
-        uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
-        lock = server.get_lock(uid)
-        if lock != None:
-            if lock.token == locktoken:
-                server.clear_lock(uid)
-            else:
-                # TODO search right status code
-                self.log.debug("405 Method not allowed")
-                self.send_response("405 Method not allowed")
-                self.send_header("Content-Length", 0)
-                self.end_headers()
-                return
+            uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
+            lock = server.get_lock(uid)
+            if lock != None:
+                if lock.token == locktoken:
+                    server.clear_lock(uid)
+                else:
+                    # TODO search right status code
+                    self.log.debug("405 Method not allowed")
+                    self.send_response("405 Method not allowed")
+                    self.send_header("Content-Length", 0)
+                    self.end_headers()
+                    return
+        except:
+            self.log.debug("No locktoken")
+            pass
 
         self.log.debug("204 OK")
         self.send_response(204, "OK")
@@ -312,7 +315,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         lockowner = None
         if data != "":
-            lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
+            try:
+                lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
+            except:
+                self.log.debug("No lockowner in data: %s" % data)
 
         try:
             self.server.fs.get_props(Path(unquote(self.path)).relative_to("/"))
