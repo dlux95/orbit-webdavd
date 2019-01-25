@@ -235,6 +235,22 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.log.info("[%s] DELETE Request on %s" % (self.user, self.path))
 
         self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
+
+        locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
+
+        uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
+        lock = server.get_lock(uid)
+        if lock != None:
+            if lock.token == locktoken:
+                server.clear_lock(uid)
+            else:
+                # TODO search right status code
+                self.log.debug("405 Method not allowed")
+                self.send_response("405 Method not allowed")
+                self.send_header("Content-Length", 0)
+                self.end_headers()
+                return
+
         self.log.debug("204 OK")
         self.send_response(204, "OK")
         self.end_headers()
@@ -288,6 +304,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         try:
             self.server.fs.get_props(Path(unquote(self.path)).relative_to("/"))
         except NoSuchFileException:
+            uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
             lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
             self.server.set_lock(uid, lock)
             w = WriteBuffer(self.wfile)
