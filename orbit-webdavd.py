@@ -318,7 +318,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         data = self.get_data()
         self.log.info("[%s] LOCK Request on %s with length %d" % (self.user, self.path, len(data)))
-
+        print(data)
         lockowner = None
         if data != "":
             try:

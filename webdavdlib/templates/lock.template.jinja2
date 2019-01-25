@@ -5,7 +5,7 @@
             <D:locktype><D:write/></D:locktype>
             <D:lockscope><D:{{ lock.mode }}/></D:lockscope>
             <D:depth>{{ lock.depth }}</D:depth>
-            <D:owner>{{ lock.owner }}</D:owner>
+            <D:owner><D:href>{{ lock.owner }}</D:href></D:owner>
             <D:timeout>{{ lock.timeout }}</D:timeout>
             <D:locktoken><D:href>opaquelocktoken:{{ lock.token }}</D:href></D:locktoken>
         </D:activelock>
