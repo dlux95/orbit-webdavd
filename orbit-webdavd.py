@@ -248,24 +248,27 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
 
-        try:
-            locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
+        uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
+        lock = server.get_lock(uid)
+        
+        if lock != None:
+            try:
+                locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
 
-            uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
-            lock = server.get_lock(uid)
-            if lock != None:
                 if lock.token == locktoken:
                     server.clear_lock(uid)
                 else:
                     # TODO search right status code
-                    self.log.debug("405 Method not allowed")
-                    self.send_response("405 Method not allowed")
-                    self.send_header("Content-Length", 0)
+                    self.log.debug("423 Locked")
+                    self.send_response(423, "Locked")
                     self.end_headers()
                     return
-        except:
-            self.log.debug("No locktoken")
-            pass
+            except:
+                self.log.debug("No locktoken")
+                self.log.debug("423 Locked")
+                self.send_response(423, "Locked")
+                self.end_headers()
+                return
 
         self.log.debug("204 OK")
         self.send_response(204, "OK")
