@@ -165,12 +165,25 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         data = self.get_data()
         self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(data)))
 
+        exists = True
+        try:
+            self.server.fs.get_props(Path(unquote(self.path)).relative_to("/"))
+        except NoSuchFileException:
+            exists = False
+
+
         result = self.server.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
 
-        self.log.debug("200 OK")
-        self.send_response(200, "OK")
-        self.send_header('Content-length', '0')
-        self.end_headers()
+        if exists:
+            self.log.debug("204 No-Content")
+            self.send_response(204, "No-Content")
+            self.send_header('Content-length', '0')
+            self.end_headers()
+        else:
+            self.log.debug("201 Created")
+            self.send_response(201, "Created")
+            self.send_header('Content-length', '0')
+            self.end_headers()
 
 
     def do_OPTIONS(self):
