@@ -250,7 +250,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
         lock = server.get_lock(uid)
-        
+
         if lock != None:
             try:
                 locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
