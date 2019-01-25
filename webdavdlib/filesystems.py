@@ -231,7 +231,6 @@ class DirectoryFilesystem(Filesystem):
             etag.update(bytes(str(path.stat().st_atime), "utf-8"))
             etag.update(bytes(str(path.stat().st_ctime), "utf-8"))
             etag.update(bytes(str(path.stat().st_ino), "utf-8"))
-            etag.update(bytes(str(path.stat().st_file_attributes), "utf-8"))
             etag.update(bytes(path.as_posix(), "utf-8"))
             return "\"%s\"" % etag.hexdigest()
 

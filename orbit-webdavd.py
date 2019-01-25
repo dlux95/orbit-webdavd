@@ -21,8 +21,8 @@ class WebDAVServer(ThreadingHTTPServer):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self.fs = MultiplexFilesystem(
             {
-                "MultiplexTest": DirectoryFilesystem("C:/WebDAVTest/"),
-                "Benutzer": DirectoryFilesystem("C:/Users/Daniel/")
+                "Temp": DirectoryFilesystem("/tmp"),
+                "Root": DirectoryFilesystem("/root/")
             })
 
         self.templates = {
@@ -167,14 +167,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         result = self.server.fs.set_content(Path(unquote(self.path)).relative_to("/"), data)
 
-        self.log.debug("204 OK")
-        self.send_response(204, "OK")
+        self.log.debug("200 OK")
+        self.send_response(200, "OK")
+        self.send_header('Content-length', '0')
         self.end_headers()
 
 
     def do_OPTIONS(self):
-        if self.require_auth():
-            return
         self.log.info("[%s] OPTIONS Request on %s" % (self.user, self.path))
 
         self.send_response(200, self.server_version)
@@ -285,6 +284,25 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         lockowner = None
         if data != "":
             lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
+
+        try:
+            self.server.fs.get_props(Path(unquote(self.path)).relative_to("/"))
+        except NoSuchFileException:
+            lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
+            self.server.set_lock(uid, lock)
+            w = WriteBuffer(self.wfile)
+            w.write(self.server.templates["lock"].render(lock=lock))
+ 
+            self.log.debug("404 Not Found")
+            self.send_response(404, "Not Found")
+            self.send_header("Lock-Token", "<opaquelocktoken:%s>" % lock.token)
+            self.send_header("Content-type", 'text/xml')
+            self.send_header("Charset", '"utf-8"')
+            self.send_header("Content-Length", str(w.getSize()))
+            self.end_headers()
+
+            w.flush()
+            return            
 
         if not lockowner == None:
             uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
