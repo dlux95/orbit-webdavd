@@ -246,7 +246,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             return
         self.log.info("[%s] DELETE Request on %s" % (self.user, self.path))
 
-        self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
+
 
         uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
         lock = server.get_lock(uid)
@@ -256,6 +256,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
 
                 if lock.token == locktoken:
+                    self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
                     server.clear_lock(uid)
                 else:
                     # TODO search right status code
@@ -269,6 +270,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 self.send_response(423, "Locked")
                 self.end_headers()
                 return
+        else:
+            self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
 
         self.log.debug("204 OK")
         self.send_response(204, "OK")
