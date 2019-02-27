@@ -169,6 +169,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Permission denied")
+            self.send_response(403, "Permission denied")
+            self.end_headers()
 
     def do_PUT(self):
         if self.require_auth():
@@ -182,6 +186,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"))
         except NoSuchFileException:
             exists = False
+
 
 
         result = self.server.fs.set_content(self.user, Path(unquote(self.path)).relative_to("/"), data)
@@ -252,6 +257,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         except NoSuchFileException:
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
+            self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Permission denied")
+            self.send_response(403, "Permission denied")
             self.end_headers()
 
     def do_DELETE(self):
