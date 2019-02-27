@@ -8,12 +8,21 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 from traceback import print_exc
 from time import strftime
+from functools import lru_cache
 
 from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 
+
 import pam
+p = pam.pam()
+
+
+@lru_cache(maxsize=512)
+def auth(username, password):
+    return p.authenticate(username, password, service = "system-auth")
+
 
 exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
 
@@ -99,8 +108,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 base = base64.b64decode(self.headers.get('Authorization')[6:]).decode()
                 username, password = base.split(":")
 
-                p = pam.pam()
-                if p.authenticate(username, password, service="system-auth"):
+
+                if auth(username, password):
                     self.log.debug("Authentication for %s successful" % username)
                     self.user = username
                     return False
