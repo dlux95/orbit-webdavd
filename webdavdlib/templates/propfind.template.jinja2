@@ -14,7 +14,6 @@
                             {% endif %}
                         {% endif %}
                     {% endfor %}
-                    {% if not props["lock"] == None %}
                         <D:lockdiscovery>
                             <D:activelock>
                                 <D:locktype><D:write/></D:locktype>
@@ -25,14 +24,12 @@
                                 <D:locktoken><D:href>opaquelocktoken:{{ props["lock"].token }}</D:href></D:locktoken>
                             </D:activelock>
                         </D:lockdiscovery>
-                    {% else %}
                         <D:supportedlock>
                             <D:lockentry>
                                 <D:lockscope><D:exclusive/></D:lockscope>
                                 <D:locktype><D:write/></D:locktype>
                             </D:lockentry>
                         </D:supportedlock>
-                    {% endif %}
                 </D:prop>
             <D:status>HTTP/1.1 {{ props["D:status"] }}</D:status>
             </D:propstat>
