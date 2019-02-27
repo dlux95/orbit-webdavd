@@ -130,64 +130,108 @@ class DirectoryFilesystem(Filesystem):
         return realpath
 
     def get_content(self, user, path, start=-1, end=-1):
-        path = self.convert_local_to_real(path)
-        self.log.debug("get_content(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("get_content(%s)" % path.as_posix())
 
-        with open(path, "r+b") as f:
-            if start != -1:
-                f.seek(start)
+            with open(path, "r+b") as f:
+                if start != -1:
+                    f.seek(start)
 
-            if end != -1:
-                return f.read(end-start)
-            else:
-                return f.read()
+                if end != -1:
+                    return f.read(end-start)
+                else:
+                    return f.read()
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def set_content(self, user, path, content, start=-1):
-        path = self.convert_local_to_real(path)
-        self.log.debug("set_content(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("set_content(%s)" % path.as_posix())
 
-        mode = "wb"
-        if path.exists():
-            mode = "r+b"
+            mode = "wb"
+            if path.exists():
+                mode = "r+b"
 
-        with open(path, mode) as f:
-            if start != -1:
-                f.seek(start)
+            with open(path, mode) as f:
+                if start != -1:
+                    f.seek(start)
 
-            f.write(content)
+                f.write(content)
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def delete(self, user, path):
-        path = self.convert_local_to_real(path)
-        self.log.debug("delete(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
 
-        if path.is_file():
-            path.unlink()
-        else:
-            shutil.rmtree(path, ignore_errors=True)
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("delete(%s)" % path.as_posix())
+
+            if path.is_file():
+                path.unlink()
+            else:
+                shutil.rmtree(path, ignore_errors=True)
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def create(self, user, path, dir=True):
-        path = self.convert_local_to_real(path)
-        self.log.debug("create(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
 
-        if dir:
-            path.mkdir(parents=False, exist_ok=False)
-        else:
-            path.touch(exist_ok=False)
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("create(%s)" % path.as_posix())
+
+            if dir:
+                path.mkdir(parents=False, exist_ok=False)
+            else:
+                path.touch(exist_ok=False)
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def get_props(self, user, path, props=STDPROP):
-        path = self.convert_local_to_real(path)
-        self.log.debug("get_props(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
 
-        if not path.exists():
-            raise NoSuchFileException()
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("get_props(%s)" % path.as_posix())
 
-        propdata = {"D:status": "200 OK"}
+            if not path.exists():
+                raise NoSuchFileException()
 
-        for prop in props:
-            propdata[prop] = self._get_prop(path, prop)
-            self.log.debug("Property %s: %s" % (prop, propdata[prop]))
+            propdata = {"D:status": "200 OK"}
 
-        return propdata
+            for prop in props:
+                propdata[prop] = self._get_prop(path, prop)
+                self.log.debug("Property %s: %s" % (prop, propdata[prop]))
+
+            return propdata
+
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def _get_prop(self, path, prop):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
@@ -238,22 +282,42 @@ class DirectoryFilesystem(Filesystem):
             return False
 
     def get_children(self, user, path):
-        path = self.convert_local_to_real(path)
-        self.log.debug("get_children(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
 
-        if path.is_dir():
-            l = []
-            for sub in path.iterdir():
-                l.append(sub.relative_to(self.basepath).as_posix())
-            return l
-        else:
-            return []
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("get_children(%s)" % path.as_posix())
+
+            if path.is_dir():
+                l = []
+                for sub in path.iterdir():
+                    l.append(sub.relative_to(self.basepath).as_posix())
+                return l
+            else:
+                return []
+
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
     def get_uid(self, user, path):
-        path = self.convert_local_to_real(path)
-        self.log.debug("get_uid(%s)" % path.as_posix())
+        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setegid(pwd.getpwnam(user)[3])
+        os.seteuid(pwd.getpwnam(user)[2])
 
-        return path.absolute().as_posix()
+        try:
+            path = self.convert_local_to_real(path)
+            self.log.debug("get_uid(%s)" % path.as_posix())
+
+            return path.absolute().as_posix()
+
+        finally:
+            os.seteuid(0)
+            os.setegid(0)
+            os.initgroups("root", 0)
 
 
 class HomeFilesystem(Filesystem):

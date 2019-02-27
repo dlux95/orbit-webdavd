@@ -3,7 +3,7 @@ import re
 import logging
 import base64
 import json
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from traceback import print_exc
@@ -20,7 +20,7 @@ exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read
 
 VERSION = "0.1"
 
-class WebDAVServer(ThreadingHTTPServer):
+class WebDAVServer(HTTPServer):
     log = logging.getLogger("WebDAVServer")
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
@@ -418,7 +418,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
-    root_logger.setLevel("DEBUG")
+    root_logger.setLevel("INFO")
     root_logger.addHandler(SystemdHandler())
 
     server = WebDAVServer(("", port), WebDAVRequestHandler)
