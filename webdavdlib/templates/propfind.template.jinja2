@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:"   xmlns:Office="urn:schemas-microsoft-com:office:office">
+<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:" xmlns:Office="urn:schemas-microsoft-com:office:office">
     {%  for resource, props in resdata.items() %}
         <D:response>
             <D:href>/{{ resource.as_posix().strip(".") | urlencode }}</D:href>

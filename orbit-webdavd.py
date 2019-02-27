@@ -13,16 +13,17 @@ from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 
+
+exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
+
+
 VERSION = "0.1"
 
 class WebDAVServer(ThreadingHTTPServer):
     log = logging.getLogger("WebDAVServer")
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
-        self.fs = MultiplexFilesystem(
-            {
-                "Temp": DirectoryFilesystem("/tmp"),
-            })
+        self.fs = config
 
         self.templates = {
             "lock" : get_template("webdavdlib/templates/lock.template.jinja2"),
@@ -246,14 +247,12 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             return
         self.log.info("[%s] DELETE Request on %s" % (self.user, self.path))
 
-
-
         uid = self.server.fs.get_uid(Path(unquote(self.path)).relative_to("/"))
         lock = server.get_lock(uid)
 
         if lock != None:
             try:
-                locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)
+                locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["If"])).group(1)
 
                 if lock.token == locktoken:
                     self.server.fs.delete(Path(unquote(self.path)).relative_to("/"))
@@ -294,12 +293,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth():
             return
 
-        data = self.get_data()
-        self.log.info("[%s] PROPPATCH Request on %s with length %d" % (self.user, self.path, len(data)))
+        #data = self.get_data()
+        #self.log.info("[%s] PROPPATCH Request on %s with length %d" % (self.user, self.path, len(data)))
 
-        self.log.debug("200 Ok")
-        self.send_response(200, "Ok")
-        self.end_headers()
+        self.do_PROPFIND()
 
             
 
@@ -418,8 +415,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
-    root_logger.setLevel("DEBUG")
+    root_logger.setLevel("INFO")
     root_logger.addHandler(SystemdHandler())
 
-    server = WebDAVServer(("", 8080), WebDAVRequestHandler)
+    server = WebDAVServer(("", port), WebDAVRequestHandler)
     server.serve_forever()

@@ -1,0 +1,5 @@
+config = MultiplexFilesystem({
+    "Temp": DirectoryFilesystem("C:/WebDAVTest"),
+})
+
+port = 8080
