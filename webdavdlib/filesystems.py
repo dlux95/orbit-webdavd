@@ -29,7 +29,7 @@ STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate",
 
 
 class Filesystem(object):
-    def get_props(self, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP):
         """
         Get properties of resource described by path.
 
@@ -41,7 +41,7 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
-    def get_children(self, path):
+    def get_children(self, user, path):
         """
         Get children of a resource described by path. Only suitible for collection resources.
 
@@ -52,7 +52,7 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
-    def get_content(self, path, start=-1, end=-1):
+    def get_content(self, user, path, start=-1, end=-1):
         """
         Get the content of a resource described by path. Only suitible for non-collection resources.
         A start and end byte can be specified to get a specific part of a resource.
@@ -66,7 +66,7 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
-    def set_content(self, path, content, start=-1):
+    def set_content(self, user, path, content, start=-1):
         """
         Sets the content of a resource described by path. Only suitible for non-collection resources.
         A start byte can be specified to only update a part of a resource.
@@ -80,7 +80,7 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
-    def create(self, path, dir=True):
+    def create(self, user, path, dir=True):
         """
         Creates a resource that is not existing yet. Primarly used by MKCOL.
 
@@ -90,7 +90,7 @@ class Filesystem(object):
         """
 
 
-    def delete(self, path):
+    def delete(self, user, path):
         """
         Deletes the resource described by path. Can be used on collections and non-collections.
 
@@ -100,7 +100,7 @@ class Filesystem(object):
         """
         raise NotImplementedError()
 
-    def get_uid(self, path):
+    def get_uid(self, user, path):
         """
         Gets a unique identifier for a specific resource. (Should be identical if two filesystems point to
         the same resource). This identifier is used for locking purposes.
@@ -127,7 +127,7 @@ class DirectoryFilesystem(Filesystem):
 
         return realpath
 
-    def get_content(self, path, start=-1, end=-1):
+    def get_content(self, user, path, start=-1, end=-1):
         path = self.convert_local_to_real(path)
         self.log.debug("get_content(%s)" % path.as_posix())
 
@@ -140,7 +140,7 @@ class DirectoryFilesystem(Filesystem):
             else:
                 return f.read()
 
-    def set_content(self, path, content, start=-1):
+    def set_content(self, user, path, content, start=-1):
         path = self.convert_local_to_real(path)
         self.log.debug("set_content(%s)" % path.as_posix())
 
@@ -154,7 +154,7 @@ class DirectoryFilesystem(Filesystem):
 
             f.write(content)
 
-    def delete(self, path):
+    def delete(self, user, path):
         path = self.convert_local_to_real(path)
         self.log.debug("delete(%s)" % path.as_posix())
 
@@ -163,7 +163,7 @@ class DirectoryFilesystem(Filesystem):
         else:
             shutil.rmtree(path, ignore_errors=True)
 
-    def create(self, path, dir=True):
+    def create(self, user, path, dir=True):
         path = self.convert_local_to_real(path)
         self.log.debug("create(%s)" % path.as_posix())
 
@@ -172,7 +172,7 @@ class DirectoryFilesystem(Filesystem):
         else:
             path.touch(exist_ok=False)
 
-    def get_props(self, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP):
         path = self.convert_local_to_real(path)
         self.log.debug("get_props(%s)" % path.as_posix())
 
@@ -235,7 +235,7 @@ class DirectoryFilesystem(Filesystem):
         else:
             return False
 
-    def get_children(self, path):
+    def get_children(self, user, path):
         path = self.convert_local_to_real(path)
         self.log.debug("get_children(%s)" % path.as_posix())
 
@@ -247,16 +247,41 @@ class DirectoryFilesystem(Filesystem):
         else:
             return []
 
-    def get_uid(self, path):
+    def get_uid(self, user, path):
         path = self.convert_local_to_real(path)
         self.log.debug("get_uid(%s)" % path.as_posix())
 
         return path.absolute().as_posix()
 
 
-class HomeFilesystem(DirectoryFilesystem):
+class HomeFilesystem(Filesystem):
     def __init__(self):
-        pass
+        self.homefs = None
+
+    def get_filesystem(self, user):
+        self.homefs = DirectoryFilesystem("/tmp/user")
+
+
+    def get_props(self, user, path, props=STDPROP):
+        return self.get_filesystem(user).get_props(user, path, props)
+
+    def get_children(self, user, path):
+        return self.get_filesystem(user).get_children(user, path)
+
+    def get_content(self, user, path, start=-1, end=-1):
+        return self.get_filesystem(user).get_content(user, path, start, end)
+
+    def set_content(self, user, path, content, start=-1):
+        return self.get_filesystem(user).set_content(user, path, content, start)
+
+    def create(self, user, path, dir=True):
+        return self.get_filesystem(user).create(user, path, dir)
+
+    def delete(self, user, path):
+        return self.get_filesystem(user).delete(user, path)
+
+    def get_uid(self, user, path):
+        return self.get_filesystem(user).get_uid(user, path)
 
 
 class MySQLFilesystem(Filesystem):
