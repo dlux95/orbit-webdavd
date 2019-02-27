@@ -110,10 +110,6 @@ class Filesystem(object):
         raise NotImplementedError()
 
 
-class HomeFilesystem(Filesystem):
-    pass
-
-
 class DirectoryFilesystem(Filesystem):
     log = logging.getLogger("DirectoryFilesystem")
     def __init__(self, basepath):
@@ -121,6 +117,7 @@ class DirectoryFilesystem(Filesystem):
 
         if not self.basepath.is_dir():
             raise webdavdlib.exceptions.NoSuchFileException()
+
 
     def convert_local_to_real(self, path):
         realpath = self.basepath / path
@@ -255,6 +252,11 @@ class DirectoryFilesystem(Filesystem):
         self.log.debug("get_uid(%s)" % path.as_posix())
 
         return path.absolute().as_posix()
+
+
+class HomeFilesystem(DirectoryFilesystem):
+    def __init__(self):
+        pass
 
 
 class MySQLFilesystem(Filesystem):
