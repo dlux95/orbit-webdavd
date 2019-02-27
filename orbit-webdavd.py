@@ -170,8 +170,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(404, "Not Found")
             self.end_headers()
         except PermissionError:
-            self.log.debug("403 Permission denied")
-            self.send_response(403, "Permission denied")
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
             self.end_headers()
 
     def do_PUT(self):
@@ -259,8 +259,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
         except PermissionError:
-            self.log.debug("403 Permission denied")
-            self.send_response(403, "Permission denied")
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
             self.end_headers()
 
     def do_DELETE(self):
