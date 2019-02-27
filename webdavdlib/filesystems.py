@@ -15,7 +15,7 @@ import pwd
 
 @lru_cache(maxsize=512)
 def get_groups(username):
-    os.initgroups(user, pwd.getpwnam(user)[3])
+    os.initgroups(username, pwd.getpwnam(username)[3])
     g = os.getgroups()
     os.initgroups("root", 0)
 
