@@ -100,7 +100,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 username, password = base.split(":")
 
                 p = pam.pam()
-                if p.authenticate(username, password):
+                if p.authenticate(username, password, service="system-auth"):
                     self.log.debug("Authentication for %s successful" % username)
                     self.user = username
                     return False
