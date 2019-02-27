@@ -8,8 +8,18 @@ import os
 import shutil
 import logging
 from webdavdlib import unixdate2httpdate, unixdate2iso8601
+from functools import lru_cache
+
 
 import pwd
+
+@lru_cache(maxsize=512)
+def get_groups(username):
+    os.initgroups(user, pwd.getpwnam(user)[3])
+    g = os.getgroups()
+    os.initgroups("root", 0)
+
+    return g
 
 
 def getdirsize(path):
@@ -130,7 +140,7 @@ class DirectoryFilesystem(Filesystem):
         return realpath
 
     def get_content(self, user, path, start=-1, end=-1):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
         try:
@@ -148,10 +158,10 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def set_content(self, user, path, content, start=-1):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
         try:
@@ -170,10 +180,10 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def delete(self, user, path):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
 
@@ -188,10 +198,10 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def create(self, user, path, dir=True):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
 
@@ -206,10 +216,10 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def get_props(self, user, path, props=STDPROP):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
 
@@ -231,7 +241,7 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def _get_prop(self, path, prop):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
@@ -282,7 +292,7 @@ class DirectoryFilesystem(Filesystem):
             return False
 
     def get_children(self, user, path):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
 
@@ -301,10 +311,10 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
     def get_uid(self, user, path):
-        os.initgroups(user, pwd.getpwnam(user)[3])
+        os.setgroups(get_groups(user))
         os.setegid(pwd.getpwnam(user)[3])
         os.seteuid(pwd.getpwnam(user)[2])
 
@@ -317,7 +327,7 @@ class DirectoryFilesystem(Filesystem):
         finally:
             os.seteuid(0)
             os.setegid(0)
-            os.initgroups("root", 0)
+            os.setgroups(get_groups("root"))
 
 
 class HomeFilesystem(Filesystem):
