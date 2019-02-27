@@ -147,7 +147,7 @@ class DirectoryFilesystem(Filesystem):
             path = self.convert_local_to_real(path)
             self.log.debug("get_content(%s)" % path.as_posix())
 
-            with open(path, "r+b") as f:
+            with open(path, "rb") as f:
                 if start != -1:
                     f.seek(start)
 
