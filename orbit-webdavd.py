@@ -21,7 +21,7 @@ class WebDAVServer(ThreadingHTTPServer):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self.fs = MultiplexFilesystem(
             {
-                "Temp": DirectoryFilesystem("C:/WebDAVTest"),
+                "Temp": DirectoryFilesystem("/tmp"),
             })
 
         self.templates = {
@@ -288,6 +288,17 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.debug("201 Created")
         self.send_response(201, "Created")
+        self.end_headers()
+
+    def do_PROPPATCH(self):
+        if self.require_auth():
+            return
+
+        data = self.get_data()
+        self.log.info("[%s] PROPPATCH Request on %s with length %d" % (self.user, self.path, len(data)))
+
+        self.log.debug("200 Ok")
+        self.send_response(200, "Ok")
         self.end_headers()
 
             
