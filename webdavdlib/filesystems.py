@@ -9,6 +9,8 @@ import shutil
 import logging
 from webdavdlib import unixdate2httpdate, unixdate2iso8601
 
+import pwd
+
 
 def getdirsize(path):
     total_size = 0
@@ -255,12 +257,11 @@ class DirectoryFilesystem(Filesystem):
 
 
 class HomeFilesystem(Filesystem):
-    def __init__(self):
-        self.homefs = None
+    def __init__(self, basepath):
+        self.basepath = basepath
 
     def get_filesystem(self, user):
-        self.homefs = DirectoryFilesystem("/tmp/user")
-
+         return DirectoryFilesystem(pwd.getpwnam(user)[5])
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)
@@ -300,7 +301,7 @@ class MultiplexFilesystem(Filesystem):
     def __init__(self, filesystems):
         self.filesystems = filesystems
 
-    def get_props(self, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP):
         if path == pathlib.Path("."):
             # Root path, need to construct virtual folder
             return {"D:status" : "200 OK",
@@ -312,11 +313,11 @@ class MultiplexFilesystem(Filesystem):
         else:
             vfs = path.parts[0]
             if vfs in self.filesystems:
-                return self.filesystems[vfs].get_props(path.relative_to(vfs), props)
+                return self.filesystems[vfs].get_props(user, path.relative_to(vfs), props)
             else:
                 raise NoSuchFileException()
 
-    def get_children(self, path):
+    def get_children(self, user, path):
         if path == pathlib.Path("."):
             children = []
             for cpath, fs in self.filesystems.items():
@@ -326,46 +327,46 @@ class MultiplexFilesystem(Filesystem):
             vfs = path.parts[0]
             if vfs in self.filesystems:
                 children = []
-                for cpath in self.filesystems[vfs].get_children(path.relative_to(vfs)):
+                for cpath in self.filesystems[vfs].get_children(user, path.relative_to(vfs)):
                     children.append(pathlib.Path("/" + vfs + "/" + cpath).relative_to("/").as_posix())
                 return children
             else:
                 return []
 
-    def get_content(self, path, start=-1, end=-1):
+    def get_content(self, user, path, start=-1, end=-1):
         vfs = path.parts[0]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].get_content(path.relative_to(vfs), start, end)
+            return self.filesystems[vfs].get_content(user, path.relative_to(vfs), start, end)
         else:
             raise NoSuchFileException()
 
-    def set_content(self, path, content, start=-1):
+    def set_content(self, user, path, content, start=-1):
         vfs = path.parts[0]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].set_content(path.relative_to(vfs), content, start)
+            return self.filesystems[vfs].set_content(user, path.relative_to(vfs), content, start)
         else:
             raise Exception()
 
-    def create(self, path, dir=True):
+    def create(self, user, path, dir=True):
         vfs = path.parts[0]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].create(path.relative_to(vfs), dir)
+            return self.filesystems[vfs].create(user, path.relative_to(vfs), dir)
         else:
             raise Exception()
 
-    def delete(self, path):
+    def delete(self, user, path):
         vfs = path.parts[0]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].delete(path.relative_to(vfs))
+            return self.filesystems[vfs].delete(user, path.relative_to(vfs))
         else:
             raise Exception()
 
-    def get_uid(self, path):
+    def get_uid(self, user, path):
         if path == pathlib.Path("."):
             return "root"
         else:
             vfs = path.parts[0]
             if vfs in self.filesystems:
-                return self.filesystems[vfs].get_uid(path.relative_to(vfs))
+                return self.filesystems[vfs].get_uid(user, path.relative_to(vfs))
             else:
                 raise Exception()
