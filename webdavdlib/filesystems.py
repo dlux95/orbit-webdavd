@@ -10,7 +10,7 @@ import logging
 from webdavdlib import unixdate2httpdate, unixdate2iso8601
 from functools import lru_cache
 import mimetypes
-
+from urllib.parse import quote
 
 import pwd
 
@@ -267,7 +267,7 @@ class DirectoryFilesystem(Filesystem):
             return mimetypes.guess_type(path.as_posix())[0]
 
         elif prop == "D:name" or prop == "D:displayname":
-            return path.relative_to(self.basepath).name
+            return quote(path.relative_to(self.basepath).name, safe="/~.$")
 
         elif prop == "D:resourcetype":
             if path.is_file():

@@ -436,7 +436,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
-    root_logger.setLevel("INFO")
+    root_logger.setLevel("DEBUG")
     root_logger.addHandler(SystemdHandler())
 
     server = WebDAVServer(("", port), WebDAVRequestHandler)
