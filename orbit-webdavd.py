@@ -171,7 +171,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 b.flush()
             else:
                 filedata = self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/"))
-
+                b = WriteBuffer(self.wfile)
+                b.write(filedata)
 
                 self.log.debug("200 OK")
                 self.send_response(200, "OK")
