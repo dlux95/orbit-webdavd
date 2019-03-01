@@ -341,6 +341,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         destination = self.get_destination()
         self.log.info("[%s] MOVE Request on %s to %s" % (self.user, self.path, destination))
 
+        self.do_COPY()
+
         # TODO Implement
         
 
@@ -350,6 +352,16 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         destination = self.get_destination()
         self.log.info("[%s] COPY Request on %s to %s" % (self.user, self.path, destination))
+
+        copyqueue = [self.path]
+
+        while len(copyqueue) > 1:
+            element = copyqueue[0]
+            self.log.debug("Copy Element " + element)
+            children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
+            for c in children:
+                copyqueue.append(c)
+
 
         # TODO Implement
         
