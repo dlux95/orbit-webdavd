@@ -397,7 +397,7 @@ class MultiplexFilesystem(Filesystem):
                     "D:lastaccessed" : unixdate2httpdate(0),
                     "D:lastmodified" : unixdate2httpdate(0),
                     "D:resourcetype" : "<D:collection/>",
-                    "D:iscollection" : "True"}
+                    "D:iscollection" : True}
         else:
             vfs = path.parts[0]
             if vfs in self.filesystems:
