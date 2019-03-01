@@ -147,15 +147,28 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.log.info("[%s] GET Request on %s" % (self.user, self.path))
 
         try:
-            filedata = self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/"))
-            b = WriteBuffer(self.wfile)
-            b.write(filedata)
+            props = self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"), ["D:iscollection"])
+            if props["D:iscollection"]:
 
-            self.log.debug("200 OK")
-            self.send_response(200, "OK")
-            self.send_header("Content-Length", str(b.getSize()))
-            self.end_headers()
-            b.flush()
+                children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
+
+                b = WriteBuffer(self.wfile)
+                b.write(str(children))
+                
+                self.log.debug("200 OK")
+                self.send_response(200, "OK")
+                self.send_header("Content-Length", str(b.getSize()))
+                self.end_headers()
+                b.flush()
+            else:
+                filedata = self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/"))
+
+
+                self.log.debug("200 OK")
+                self.send_response(200, "OK")
+                self.send_header("Content-Length", str(b.getSize()))
+                self.end_headers()
+                b.flush()
         except FileNotFoundError or NoSuchFileException:
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")

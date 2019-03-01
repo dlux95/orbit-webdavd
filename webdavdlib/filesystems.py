@@ -114,8 +114,9 @@ class Filesystem(object):
 
 class DirectoryFilesystem(Filesystem):
     log = logging.getLogger("DirectoryFilesystem")
-    def __init__(self, basepath):
+    def __init__(self, basepath, additional_dirs=[]):
         self.basepath = pathlib.Path(basepath)
+        self.additional_dirs = additional_dirs
 
         if not self.basepath.is_dir():
             raise webdavdlib.exceptions.NoSuchFileException()
@@ -123,9 +124,17 @@ class DirectoryFilesystem(Filesystem):
 
     def convert_local_to_real(self, path):
         realpath = self.basepath / path
-        if not realpath.as_posix().startswith(self.basepath.as_posix()):
-            print("Access to ", realpath, " restricted because not under ", self.basepath)
-            raise NoSuchFileException()
+
+        allowed = False
+        if realpath.as_posix().startswith(self.basepath.as_posix()):
+            allowed = True
+        for add_path in self.additional_dirs:
+            if realpath.as_posix().startswith(pathlib.Path(add_path).as_posix()):
+                allowed = True
+
+        if not allowed:
+            self.log.error("Access to ", realpath, " restricted because not under ", self.basepath)
+            raise PermissionError()
 
         return realpath
 
