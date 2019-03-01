@@ -38,7 +38,7 @@ def getdirsize(path):
 
 
 # TODO: Add default allprops
-STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime"]
+STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
 
 
 class Filesystem(object):
@@ -262,6 +262,9 @@ class DirectoryFilesystem(Filesystem):
 
         elif prop == "D:lastaccessed" or prop == "Z:Win32LastAccessTime":
             return unixdate2httpdate(path.stat().st_mtime)
+
+        elif prop == "Z:Win32FileAttributes":
+            return "00000000"
 
         elif prop == "D:ishidden":
             if path.name.startswith(".") or path.name.startswith("~"):
