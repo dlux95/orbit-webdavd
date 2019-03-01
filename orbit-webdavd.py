@@ -237,7 +237,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         data = self.get_data()
         depth = self.get_depth()
         self.log.info("[%s] PROPFIND Request on %s with depth %s and length %d" % (self.user, self.path, depth, len(data)))
-
+        print(data)
         try:
             resqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
             resdata = {}
@@ -259,6 +259,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
             w = WriteBuffer(self.wfile)
             w.write(self.server.templates["propfind"].render(resdata=resdata))
+		
+            print(self.server.templates["propfind"].render(resdata=resdata))
 
             self.log.debug("207 Multi-Status")
             self.send_response(207, "Multi-Status")  # Multi-Status
