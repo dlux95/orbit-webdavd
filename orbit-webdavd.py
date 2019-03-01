@@ -3,24 +3,33 @@ import re
 import logging
 import base64
 import json
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from traceback import print_exc
 from time import strftime
+from functools import lru_cache
 
 from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 
+
 import pam
+p = pam.pam()
+
+
+@lru_cache(maxsize=512)
+def auth(username, password):
+    return p.authenticate(username, password, service = "system-auth")
+
 
 exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
 
 
 VERSION = "0.1"
 
-class WebDAVServer(ThreadingHTTPServer):
+class WebDAVServer(HTTPServer):
     log = logging.getLogger("WebDAVServer")
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
@@ -99,8 +108,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 base = base64.b64decode(self.headers.get('Authorization')[6:]).decode()
                 username, password = base.split(":")
 
-                p = pam.pam()
-                if p.authenticate(username, password):
+
+                if auth(username, password):
                     self.log.debug("Authentication for %s successful" % username)
                     self.user = username
                     return False
@@ -173,6 +182,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
+            self.end_headers()
 
     def do_PUT(self):
         if self.require_auth():
@@ -186,6 +199,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"))
         except NoSuchFileException:
             exists = False
+
 
 
         result = self.server.fs.set_content(self.user, Path(unquote(self.path)).relative_to("/"), data)
@@ -256,6 +270,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         except NoSuchFileException:
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
+            self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
             self.end_headers()
 
     def do_DELETE(self):
