@@ -344,11 +344,12 @@ class DirectoryFilesystem(Filesystem):
 
 
 class HomeFilesystem(Filesystem):
-    def __init__(self, basepath):
+    def __init__(self, basepath, additional_dirs=[]):
         self.basepath = basepath
+        self.additional_dirs = additional_dirs
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem(pwd.getpwnam(user)[5])
+         return DirectoryFilesystem(pwd.getpwnam(user)[5], self.additional_dirs)
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)
