@@ -144,7 +144,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         b = WriteBuffer(self.wfile)
         b.write(filedata)
 
-        self.log.debug("204 OK")
+        self.log.debug("204 OK ("+str(b.getSize())+")")
         self.send_response(204, "OK")
         self.send_header("Content-Length", str(b.getSize()))
         self.end_headers()
