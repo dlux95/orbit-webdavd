@@ -273,10 +273,14 @@ class DirectoryFilesystem(Filesystem):
             return path.stat().st_size
 
         elif prop == "D:getcontenttype":
-            return mimetypes.guess_type(path.as_posix())[0]
+            ty = mimetypes.guess_type(path.as_posix())[0]
+            if ty != None:
+                return ty
+            else:
+                return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return quote(path.relative_to(self.basepath).name, safe="/~.$")
+            return path.relative_to(self.basepath).name.replace("&", "%26")
 
         elif prop == "D:resourcetype":
             if path.is_file():
