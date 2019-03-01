@@ -23,9 +23,7 @@ p = pam.pam()
 def auth(username, password):
     return p.authenticate(username, password, service = "system-auth")
 
-
 exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
-
 
 VERSION = "0.1"
 
