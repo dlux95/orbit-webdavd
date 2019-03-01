@@ -365,12 +365,26 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 for c in children:
                     copyqueue.append(c)
         else:
-            self.server.fs.set_content(self.user, Path(unquote(destination)).relative_to("/"), self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/")))
+            exists = True
+            try:
+                self.server.fs.get_props(self.user, Path(unquote(destination)).relative_to("/"))
+            except NoSuchFileException:
+                exists = False
 
+                self.server.fs.set_content(self.user, Path(unquote(destination)).relative_to("/"),
+                                           self.server.fs.get_content(self.user,
+                                                                      Path(unquote(self.path)).relative_to("/")))
 
-
-
-        # TODO Implement
+            if exists:
+                self.log.debug("204 No-Content")
+                self.send_response(204, "No-Content")
+                self.send_header('Content-length', '0')
+                self.end_headers()
+            else:
+                self.log.debug("201 Created")
+                self.send_response(201, "Created")
+                self.send_header('Content-length', '0')
+                self.end_headers()
         
 
     def do_LOCK(self):
