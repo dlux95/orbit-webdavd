@@ -354,14 +354,20 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         destination = self.get_destination()
         self.log.info("[%s] COPY Request on %s to %s" % (self.user, self.path, destination))
 
-        copyqueue = [self.path]
 
-        while len(copyqueue) > 0:
-            element = copyqueue.pop()
-            self.log.debug("Copy Element " + element)
-            children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
-            for c in children:
-                copyqueue.append(c)
+        if(self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"), ["D:iscollection"])["D:iscollection"]):
+            copyqueue = [self.path]
+
+            while len(copyqueue) > 0:
+                element = copyqueue.pop()
+                self.log.debug("Copy Element " + element)
+                children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
+                for c in children:
+                    copyqueue.append(c)
+        else:
+            self.server.fs.set_content(self.user, Path(unquote(destination)).relative_to("/"), self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/")))
+
+
 
 
         # TODO Implement
