@@ -356,7 +356,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         copyqueue = [self.path]
 
-        while len(copyqueue) > 1:
+        while len(copyqueue) > 0:
             element = copyqueue[0]
             self.log.debug("Copy Element " + element)
             children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
