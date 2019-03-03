@@ -25,7 +25,7 @@ def auth(username, password):
 
 exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
 
-VERSION = "0.1"
+VERSION = "v0.2"
 
 class WebDAVServer(HTTPServer):
     log = logging.getLogger("WebDAVServer")
