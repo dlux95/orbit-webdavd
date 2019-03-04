@@ -4,7 +4,7 @@ import re
 
 class BaseRequest(object):
     def __init__(self, httprequest):
-        self.path = unquote(httprequest.path)
+        self.path = unquote(urlparse(httprequest.path).path)
         self.headers = httprequest.headers
         self.data = ""
         if httprequest.headers.get("Content-Length"):
