@@ -128,10 +128,10 @@ class DirectoryFilesystem(Filesystem):
         realpath = self.basepath / path
 
         allowed = False
-        if realpath.as_posix().startswith(self.basepath.as_posix()):
+        if realpath.expanduser().as_posix().startswith(self.basepath.expanduser().as_posix()):
             allowed = True
         for add_path in self.additional_dirs:
-            if realpath.as_posix().startswith(pathlib.Path(add_path).as_posix()):
+            if realpath.expanduser().as_posix().startswith(pathlib.Path(add_path).expanduser().as_posix()):
                 allowed = True
 
         if not allowed:
@@ -320,7 +320,7 @@ class HomeFilesystem(Filesystem):
         self.operator = operator
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem("~/", self.additional_dirs, self.operator)
+         return DirectoryFilesystem("~", self.additional_dirs, self.operator)
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)
