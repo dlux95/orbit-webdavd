@@ -20,10 +20,10 @@ class BaseRequest(object):
         self.destination = None
 
         if self.headers.get("Destination"):
-            self.destination = unquote(self.headers.get("Destination"))
+            self.destination = unquote(urlparse(self.headers.get("Destination")).path)
 
     def parseDepth(self):
-        self.depth = None
+        self.depth = 32
 
         if self.headers.get("Depth"):
             raw = self.headers.get("Depth")
