@@ -19,13 +19,13 @@ class NoneOperator(object):
 
 class UnixOperator(BaseOperator):
     def __init__(self):
-        # noinspection PyUnresolvedReferences
         import pwd
+        self.pwd = pwd
         self.counter = 0
 
     @lru_cache(maxsize=512)
     def get_groups(self, username):
-        os.initgroups(username, pwd.getpwnam(username)[3])
+        os.initgroups(username, self.pwd.getpwnam(username)[3])
         g = os.getgroups()
         os.initgroups("root", 0)
 
@@ -33,8 +33,7 @@ class UnixOperator(BaseOperator):
 
     @lru_cache(maxsize=512)
     def get_pwnam(self, username):
-        # noinspection PyUnresolvedReferences
-        return pwd.getpwnam(username)
+        return self.pwd.getpwnam(username)
 
     def begin(self, user):
         if self.counter > 1024:
