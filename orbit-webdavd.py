@@ -313,8 +313,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_PROPPATCH(self):
-        request = PROPPATCHRequest(self)
-        if self.require_auth(request):
+        #request = PROPPATCHRequest(self)
+        #if self.require_auth(request):
             return
 
         #data = self.get_data()
