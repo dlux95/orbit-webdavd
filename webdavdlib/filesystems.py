@@ -316,11 +316,11 @@ class DirectoryFilesystem(Filesystem):
 class HomeFilesystem(Filesystem):
     def __init__(self, basepath, additional_dirs=[], operator=None):
         self.basepath = basepath
-        self.additional_dirs = additional_dirs + ["~"]
+        self.additional_dirs = additional_dirs
         self.operator = operator
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem("~", self.additional_dirs, self.operator)
+         return DirectoryFilesystem(self.operator.get_home(), self.additional_dirs, self.operator)
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)

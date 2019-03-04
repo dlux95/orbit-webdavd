@@ -45,10 +45,12 @@ class UnixOperator(BaseOperator):
         os.setegid(self.get_pwnam(user)[3])
         os.seteuid(self.get_pwnam(user)[2])
         os.umask(self.umask)
-        os.putenv("HOME", self.get_pwnam(user)[5])
 
     def end(self, user):
         os.umask(0o022)
         os.seteuid(0)
         os.setegid(0)
         os.setgroups(self.get_groups("root"))
+
+    def get_home(self, user):
+        return self.get_pwnam(user)[5]
