@@ -196,9 +196,11 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth():
             return
 
-        self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(data)))
-
         request = PutRequest(self)
+
+        self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(request.data)))
+
+
 
         exists = True
         try:
