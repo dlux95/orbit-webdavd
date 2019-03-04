@@ -25,9 +25,8 @@ class StaticAuthenticator(Authenticator):
 
 class PAMAuthenticator(Authenticator):
     def __init__(self):
-        # noinspection PyUnresolvedReferences
         import pam
+        self.p = pam.pam()
 
     def authenticate(self, username, password):
-        # noinspection PyUnresolvedReferences
-        return pam.authenticate(username, password)
+        return self.p.authenticate(username, password)
