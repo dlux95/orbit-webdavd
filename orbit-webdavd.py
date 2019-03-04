@@ -97,6 +97,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
     def require_auth(self, request):
         if request.username and request.password and self.server.authenticator.authenticate(request.username, request.password):
+            self.user = request.username
             return False
 
         self.log.debug("Unauthenticated, sending 401")
