@@ -18,15 +18,6 @@ from webdavdlib.requests import *
 from configuration import *
 
 
-import pam
-p = pam.pam()
-
-
-@lru_cache(maxsize=512)
-def auth(username, password):
-    return p.authenticate(username, password, service = "system-auth")
-
-
 VERSION = "v0.2"
 
 class WebDAVServer(HTTPServer):
@@ -34,6 +25,8 @@ class WebDAVServer(HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
         self.fs = config_filesystems()
+
+        self.authenticator = config_authenticator()
 
         self.templates = {
             "lock" : get_template("webdavdlib/templates/lock.template.jinja2"),
@@ -102,21 +95,9 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         return data
 
-    def require_auth(self):
-        if self.headers.get('Authorization'):
-            try:
-                base = base64.b64decode(self.headers.get('Authorization')[6:]).decode()
-                username, password = base.split(":")
-
-
-                if auth(username, password):
-                    self.log.debug("Authentication for %s successful" % username)
-                    self.user = username
-                    return False
-                else:
-                    self.log.debug("Authentication for %s failed" % username)
-            except:
-                self.log.exception("Authentication failed")
+    def require_auth(self, request):
+        if request.username and request.password and self.server.authenticator.authenticate(request.username, request.password):
+            return False
 
         self.log.debug("Unauthenticated, sending 401")
         self.send_response(401, 'Authorization Required')
@@ -135,12 +116,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_HEAD(self):
-        if self.require_auth():
+        request = HEADRequest(self)
+        if self.require_auth(request):
             return
 
         self.log.info("[%s] HEAD Request on %s" % (self.user, self.path))
 
-        request = HeadRequest(self)
+
 
         filedata = self.server.fs.get_content(self.user, Path(request.path).relative_to("/"))
         b = WriteBuffer(self.wfile)
@@ -152,12 +134,12 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.require_auth():
+        request = GETRequest(self)
+        if self.require_auth(request):
             return
 
         self.log.info("[%s] GET Request on %s" % (self.user, self.path))
 
-        request = GetRequest(self)
 
         try:
             props = self.server.fs.get_props(self.user, Path(request.path).relative_to("/"), ["D:iscollection"])
@@ -193,22 +175,17 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_PUT(self):
-        if self.require_auth():
+        request = PUTRequest(self)
+        if self.require_auth(request):
             return
 
-        request = PutRequest(self)
-
         self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(request.data)))
-
-
 
         exists = True
         try:
             self.server.fs.get_props(self.user, Path(request.path).relative_to("/"))
         except NoSuchFileException:
             exists = False
-
-
 
         result = self.server.fs.set_content(self.user, Path(request.path).relative_to("/"), request.data)
 
@@ -238,11 +215,12 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         
 
     def do_PROPFIND(self):
-        if self.require_auth():
+        request = PROPFINDRequest(self)
+        if self.require_auth(request):
             return
 
-        data = self.get_data()
-        depth = self.get_depth()
+        data = request.data
+        depth = request.depth
         self.log.info("[%s] PROPFIND Request on %s with depth %s and length %d" % (self.user, self.path, depth, len(data)))
         try:
             resqueue = [Path(unquote(self.path)).relative_to("/").as_posix()]
@@ -284,8 +262,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_DELETE(self):
-        if self.require_auth():
+        request = DELETERequest(self)
+        if self.require_auth(request):
             return
+
         self.log.info("[%s] DELETE Request on %s" % (self.user, self.path))
 
         uid = self.server.fs.get_uid(self.user, Path(unquote(self.path)).relative_to("/"))
@@ -318,20 +298,22 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_MKCOL(self):
-        if self.require_auth():
+        request = MKCOLRequest(self)
+        if self.require_auth(request):
             return
 
-        data = self.get_data()
-        self.log.info("[%s] MKCOL Request on %s with length %d" % (self.user, self.path, len(data)))
 
-        self.server.fs.create(self.user, Path(unquote(self.path)).relative_to("/"), dir=True)
+        self.log.info("[%s] MKCOL Request on %s with length %d" % (self.user, self.path, len(request.data)))
+
+        self.server.fs.create(self.user, Path(request.path).relative_to("/"), dir=True)
 
         self.log.debug("201 Created")
         self.send_response(201, "Created")
         self.end_headers()
 
     def do_PROPPATCH(self):
-        if self.require_auth():
+        request = PROPPATCHRequest(self)
+        if self.require_auth(request):
             return
 
         #data = self.get_data()
@@ -342,33 +324,34 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             
 
     def do_MOVE(self):
-        if self.require_auth():
+        request = MOVERequest(self)
+        if self.require_auth(request):
             return
 
-        destination = self.get_destination()
-        self.log.info("[%s] MOVE Request on %s to %s" % (self.user, self.path, destination))
 
-        if (self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"), ["D:iscollection"])[
+        self.log.info("[%s] MOVE Request on %s to %s" % (self.user, request.path, request.destination))
+
+        if (self.server.fs.get_props(self.user, Path(request.path).relative_to("/"), ["D:iscollection"])[
             "D:iscollection"]):
             copyqueue = [self.path]
 
             while len(copyqueue) > 0:
                 element = copyqueue.pop()
                 self.log.debug("Copy Element " + element)
-                children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
+                children = self.server.fs.get_children(self.user, Path(request.path).relative_to("/"))
                 for c in children:
                     copyqueue.append(c)
         else:
             exists = True
             try:
-                self.server.fs.get_props(self.user, Path(unquote(destination)).relative_to("/"))
+                self.server.fs.get_props(self.user, Path(request.destination).relative_to("/"))
             except NoSuchFileException:
                 exists = False
 
-                self.server.fs.set_content(self.user, Path(unquote(destination)).relative_to("/"),
+                self.server.fs.set_content(self.user, Path(request.destination).relative_to("/"),
                                            self.server.fs.get_content(self.user,
-                                                                      Path(unquote(self.path)).relative_to("/")))
-                self.server.fs.delete(self.user, Path(unquote(self.path)).relative_to("/"))
+                                                                      Path(request.path).relative_to("/")))
+                self.server.fs.delete(self.user, Path(request.path).relative_to("/"))
 
             if exists:
                 self.log.debug("204 No-Content")
@@ -383,7 +366,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 
     def do_COPY(self):
-        if self.require_auth():
+        request = COPYRequest(self)
+        if self.require_auth(request):
             return
 
         destination = self.get_destination()
@@ -423,23 +407,19 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         
 
     def do_LOCK(self):
-        if self.require_auth():
+        request = LOCKRequest(self)
+        if self.require_auth(request):
             return
 
-        data = self.get_data()
+        data = request.data
         self.log.info("[%s] LOCK Request on %s with length %d" % (self.user, self.path, len(data)))
-        lockowner = None
-        if data != "":
-            try:
-                lockowner = re.search("<D:href>(.*)</D:href>", str(data)).group(1)
-            except:
-                self.log.debug("No lockowner in data: %s" % data)
+
 
         try:
             self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"))
         except NoSuchFileException:
             uid = self.server.fs.get_uid(self.user, Path(unquote(self.path)).relative_to("/"))
-            lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
+            lock = Lock(uid, request.lockowner, "exclusive", "infinity", "Second-300")
             self.server.set_lock(uid, lock)
             w = WriteBuffer(self.wfile)
             w.write(self.server.templates["lock"].render(lock=lock))
@@ -455,36 +435,36 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             w.flush()
             return            
 
-        if not lockowner == None:
-            uid = self.server.fs.get_uid(self.user, Path(unquote(self.path)).relative_to("/"))
-            lock = server.get_lock(uid)
-            if lock == None:
-                lock = Lock(uid, lockowner, "exclusive", "infinity", "Second-300")
-                self.server.set_lock(uid, lock)
-                w = WriteBuffer(self.wfile)
-                w.write(self.server.templates["lock"].render(lock=lock))
+        uid = self.server.fs.get_uid(self.user, Path(unquote(self.path)).relative_to("/"))
+        lock = server.get_lock(uid)
+        if lock == None:
+            lock = Lock(uid, request.lockowner, "exclusive", "infinity", "Second-300")
+            self.server.set_lock(uid, lock)
+            w = WriteBuffer(self.wfile)
+            w.write(self.server.templates["lock"].render(lock=lock))
 
-                self.log.debug("200 OK")
-                self.send_response(200, "OK")
-                self.send_header("Lock-Token", "<opaquelocktoken:%s>" % lock.token)
-                self.send_header("Content-type", 'text/xml')
-                self.send_header("Charset", '"utf-8"')
-                self.send_header("Content-Length", str(w.getSize()))
-                self.end_headers()
+            self.log.debug("200 OK")
+            self.send_response(200, "OK")
+            self.send_header("Lock-Token", "<opaquelocktoken:%s>" % lock.token)
+            self.send_header("Content-type", 'text/xml')
+            self.send_header("Charset", '"utf-8"')
+            self.send_header("Content-Length", str(w.getSize()))
+            self.end_headers()
 
-                w.flush()
-            else:
-                self.log.debug("409 Conflict")
-                self.send_response(409, "Conflict")
-                self.send_header("Content-Length", 0)
-                self.end_headers()
+            w.flush()
+        else:
+            self.log.debug("409 Conflict")
+            self.send_response(409, "Conflict")
+            self.send_header("Content-Length", 0)
+            self.end_headers()
                 
 
     def do_UNLOCK(self):
-        if self.require_auth():
+        request = UNLOCKRequest(self)
+        if self.require_auth(request):
             return
 
-        data = self.get_data()
+        data = request.data
         self.log.info("[%s] UNLOCK Request on %s with length %d" % (self.user, self.path, len(data)))
 
         locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["Lock-Token"])).group(1)

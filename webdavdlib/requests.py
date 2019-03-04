@@ -68,15 +68,58 @@ class BaseRequest(object):
             self.overwrite = self.headers.get("Overwrite") == "T"
 
 
-class HeadRequest(BaseRequest):
+class HEADRequest(BaseRequest):
     pass
 
 
-class GetRequest(BaseRequest):
+class GETRequest(BaseRequest):
     pass
 
 
-class PutRequest(BaseRequest):
+class PUTRequest(BaseRequest):
+    pass
+
+
+class MKCOLRequest(BaseRequest):
+    pass
+
+
+class MOVERequest(BaseRequest):
+    pass
+
+
+class PROPFINDRequest(BaseRequest):
+    pass
+
+
+class DELETERequest(BaseRequest):
+    pass
+
+
+class PROPPATCHRequest(BaseRequest):
+    pass
+
+
+class COPYRequest(BaseRequest):
+    pass
+
+
+class LOCKRequest(BaseRequest):
+    def __init__(self, httprequest):
+        BaseRequest.__init__(self, httprequest)
+
+        self.parseLockowner()
+
+    def parseLockowner(self):
+        self.lockowner = None
+        if self.data:
+            try:
+                self.lockowner = re.search("<D:href>(.*)</D:href>", str(self.data)).group(1)
+            except:
+                pass
+
+
+class UNLOCKRequest(BaseRequest):
     pass
 
 
