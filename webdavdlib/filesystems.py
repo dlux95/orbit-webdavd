@@ -125,13 +125,13 @@ class DirectoryFilesystem(Filesystem):
 
 
     def convert_local_to_real(self, path):
-        realpath = (self.basepath / path).expanduser()
+        realpath = self.basepath / path
 
         allowed = False
-        if realpath.as_posix().startswith(self.basepath.expanduser().as_posix()):
+        if realpath.as_posix().startswith(self.basepath.as_posix()):
             allowed = True
         for add_path in self.additional_dirs:
-            if realpath.as_posix().startswith(pathlib.Path(add_path).expanduser().as_posix()):
+            if realpath.as_posix().startswith(pathlib.Path(add_path).as_posix()):
                 allowed = True
 
         if not allowed:
@@ -254,7 +254,7 @@ class DirectoryFilesystem(Filesystem):
                 return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return quote(path.relative_to(self.basepath.expanduser()).name, safe="/~.$")
+            return quote(path.relative_to(self.basepath).name, safe="/~.$")
 
         elif prop == "D:resourcetype":
             if path.is_file():
@@ -292,7 +292,7 @@ class DirectoryFilesystem(Filesystem):
             if path.is_dir():
                 l = []
                 for sub in path.iterdir():
-                    l.append(sub.relative_to(self.basepath.expanduser()).as_posix())
+                    l.append(sub.relative_to(self.basepath).as_posix())
                 return l
             else:
                 return []
