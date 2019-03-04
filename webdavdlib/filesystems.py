@@ -292,7 +292,7 @@ class DirectoryFilesystem(Filesystem):
             if path.is_dir():
                 l = []
                 for sub in path.iterdir():
-                    l.append(sub.relative_to(self.basepath).as_posix())
+                    l.append(sub.relative_to(self.basepath.expanduser()).as_posix())
                 return l
             else:
                 return []
