@@ -3,10 +3,12 @@ import base64
 import re
 
 class BaseRequest(object):
-    def __init__(self, path, headers, data):
-        self.path = unquote(path)
-        self.headers = headers
-        self.data = data
+    def __init__(self, httprequest):
+        self.path = unquote(httprequest.path)
+        self.headers = httprequest.headers
+        self.data = ""
+        if self.headers.get("Content-Length"):
+            self.data = self.rfile.read(int(self.headers.get('Content-Length')))
 
         self.parseDepth()
         self.parseDestination()
@@ -64,6 +66,18 @@ class BaseRequest(object):
 
         if self.headers.get("Overwrite"):
             self.overwrite = self.headers.get("Overwrite") == "T"
+
+
+class HeadRequest(BaseRequest):
+    pass
+
+
+class GetRequest(BaseRequest):
+    pass
+
+
+class PutRequest(BaseRequest):
+    pass
 
 
 

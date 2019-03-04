@@ -13,6 +13,7 @@ from functools import lru_cache
 from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
+from webdavdlib.requests import *
 
 from configuration import *
 
@@ -139,7 +140,9 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.info("[%s] HEAD Request on %s" % (self.user, self.path))
 
-        filedata = self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/"))
+        request = HeadRequest(self)
+
+        filedata = self.server.fs.get_content(self.user, Path(request.path).relative_to("/"))
         b = WriteBuffer(self.wfile)
         b.write(filedata)
 
@@ -154,11 +157,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.info("[%s] GET Request on %s" % (self.user, self.path))
 
+        request = GetRequest(self)
+
         try:
-            props = self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"), ["D:iscollection"])
+            props = self.server.fs.get_props(self.user, Path(request.path).relative_to("/"), ["D:iscollection"])
             if props["D:iscollection"]:
 
-                children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
+                children = self.server.fs.get_children(self.user, Path(request.path).relative_to("/"))
 
                 b = WriteBuffer(self.wfile)
                 b.write(str(children))
@@ -169,7 +174,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 b.flush()
             else:
-                filedata = self.server.fs.get_content(self.user, Path(unquote(self.path)).relative_to("/"))
+                filedata = self.server.fs.get_content(self.user, Path(request.path).relative_to("/"))
                 b = WriteBuffer(self.wfile)
                 b.write(filedata)
 
@@ -191,18 +196,19 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth():
             return
 
-        data = self.get_data()
         self.log.info("[%s] PUT Request on %s with length %d" % (self.user, self.path, len(data)))
+
+        request = PutRequest(self)
 
         exists = True
         try:
-            self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"))
+            self.server.fs.get_props(self.user, Path(request.path).relative_to("/"))
         except NoSuchFileException:
             exists = False
 
 
 
-        result = self.server.fs.set_content(self.user, Path(unquote(self.path)).relative_to("/"), data)
+        result = self.server.fs.set_content(self.user, Path(request.path).relative_to("/"), request.data)
 
         if exists:
             self.log.debug("204 No-Content")
