@@ -320,7 +320,7 @@ class HomeFilesystem(Filesystem):
         self.operator = operator
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem(self.operator.get_home(), self.additional_dirs, self.operator)
+         return DirectoryFilesystem(self.operator.get_home(user), self.additional_dirs, self.operator)
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)
