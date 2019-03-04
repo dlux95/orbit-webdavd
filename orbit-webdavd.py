@@ -315,7 +315,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
     def do_PROPPATCH(self):
         #request = PROPPATCHRequest(self)
         #if self.require_auth(request):
-            return
+            #return
 
         #data = self.get_data()
         #self.log.info("[%s] PROPPATCH Request on %s with length %d" % (self.user, self.path, len(data)))
