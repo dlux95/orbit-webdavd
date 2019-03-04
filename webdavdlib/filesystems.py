@@ -120,8 +120,8 @@ class DirectoryFilesystem(Filesystem):
         self.additional_dirs = additional_dirs
         self.operator = operator
 
-        if not self.basepath.is_dir():
-            raise webdavdlib.exceptions.NoSuchFileException()
+        #if not self.basepath.is_dir():
+         #   raise webdavdlib.exceptions.NoSuchFileException()
 
 
     def convert_local_to_real(self, path):
@@ -314,12 +314,13 @@ class DirectoryFilesystem(Filesystem):
 
 
 class HomeFilesystem(Filesystem):
-    def __init__(self, basepath, additional_dirs=[]):
+    def __init__(self, basepath, additional_dirs=[], operator=None):
         self.basepath = basepath
-        self.additional_dirs = additional_dirs
+        self.additional_dirs = additional_dirs + ["~"]
+        self.operator = operator
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem(pwd.getpwnam(user)[5], self.additional_dirs)
+         return DirectoryFilesystem("~/", self.additional_dirs, self.operator)
 
     def get_props(self, user, path, props=STDPROP):
         return self.get_filesystem(user).get_props(user, path, props)
