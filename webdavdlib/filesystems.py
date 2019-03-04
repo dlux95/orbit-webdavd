@@ -125,13 +125,13 @@ class DirectoryFilesystem(Filesystem):
 
 
     def convert_local_to_real(self, path):
-        realpath = self.basepath / path
+        realpath = (self.basepath / path).expanduser()
 
         allowed = False
-        if realpath.expanduser().as_posix().startswith(self.basepath.expanduser().as_posix()):
+        if realpath.as_posix().startswith(self.basepath.expanduser().as_posix()):
             allowed = True
         for add_path in self.additional_dirs:
-            if realpath.expanduser().as_posix().startswith(pathlib.Path(add_path).expanduser().as_posix()):
+            if realpath.as_posix().startswith(pathlib.Path(add_path).expanduser().as_posix()):
                 allowed = True
 
         if not allowed:
