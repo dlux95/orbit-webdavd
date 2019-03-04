@@ -18,11 +18,12 @@ class NoneOperator(object):
 
 
 class UnixOperator(BaseOperator):
-    def __init__(self):
+    def __init__(self, umask=0o022):
         import pwd
         self.pwd = pwd
         self.counter = 0
-
+        self.umask = umask
+        
     @lru_cache(maxsize=512)
     def get_groups(self, username):
         os.initgroups(username, self.pwd.getpwnam(username)[3])
@@ -43,8 +44,10 @@ class UnixOperator(BaseOperator):
         os.setgroups(self.get_groups(user))
         os.setegid(self.get_pwnam(user)[3])
         os.seteuid(self.get_pwnam(user)[2])
+        os.umask(self.umask)
 
     def end(self, user):
+        os.umask(0o022)
         os.seteuid(0)
         os.setegid(0)
         os.setgroups(self.get_groups("root"))
