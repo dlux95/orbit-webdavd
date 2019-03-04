@@ -254,7 +254,7 @@ class DirectoryFilesystem(Filesystem):
                 return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return quote(path.relative_to(self.basepath).name, safe="/~.$")
+            return quote(path.relative_to(self.basepath.expanduser()).name, safe="/~.$")
 
         elif prop == "D:resourcetype":
             if path.is_file():
