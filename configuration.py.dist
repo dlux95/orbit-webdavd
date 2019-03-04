@@ -1,5 +1,16 @@
-config = MultiplexFilesystem({
-    "Temp": DirectoryFilesystem("C:/WebDAVTest"),
-})
+from webdavdlib.filesystems import *
 
-port = 8080
+
+def config_filesystems():
+    return MultiplexFilesystem({
+        "group": DirectoryFilesystem("/group"),
+        "home": HomeFilesystem("")
+    })
+
+
+def config_port():
+    return 8080
+
+
+def config_loglevel():
+    return "DEBUG"

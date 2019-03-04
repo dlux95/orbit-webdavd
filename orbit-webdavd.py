@@ -14,6 +14,8 @@ from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 
+from configuration import *
+
 
 import pam
 p = pam.pam()
@@ -23,7 +25,6 @@ p = pam.pam()
 def auth(username, password):
     return p.authenticate(username, password, service = "system-auth")
 
-exec(open(os.path.dirname(os.path.abspath(__file__)) + "/configuration.py").read())
 
 VERSION = "v0.2"
 
@@ -31,7 +32,7 @@ class WebDAVServer(HTTPServer):
     log = logging.getLogger("WebDAVServer")
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
-        self.fs = config
+        self.fs = config_filesystems()
 
         self.templates = {
             "lock" : get_template("webdavdlib/templates/lock.template.jinja2"),
@@ -507,8 +508,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     root_logger = logging.getLogger()
-    root_logger.setLevel("INFO")
+    root_logger.setLevel(config_loglevel())
     root_logger.addHandler(SystemdHandler())
 
-    server = WebDAVServer(("", port), WebDAVRequestHandler)
+    server = WebDAVServer(("", config_port()), WebDAVRequestHandler)
     server.serve_forever()

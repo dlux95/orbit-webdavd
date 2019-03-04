@@ -37,7 +37,6 @@ def getdirsize(path):
     return total_size
 
 
-# TODO: Add default allprops
 STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
 
 
