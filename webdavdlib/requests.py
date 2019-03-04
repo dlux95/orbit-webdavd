@@ -7,8 +7,8 @@ class BaseRequest(object):
         self.path = unquote(httprequest.path)
         self.headers = httprequest.headers
         self.data = ""
-        if self.headers.get("Content-Length"):
-            self.data = self.rfile.read(int(self.headers.get('Content-Length')))
+        if httprequest.headers.get("Content-Length"):
+            self.data = httprequest.rfile.read(int(httprequest.headers.get("Content-Length")))
 
         self.parseDepth()
         self.parseDestination()
