@@ -45,6 +45,7 @@ class UnixOperator(BaseOperator):
         os.setegid(self.get_pwnam(user)[3])
         os.seteuid(self.get_pwnam(user)[2])
         os.umask(self.umask)
+        os.unsetenv("HOME")
 
     def end(self, user):
         os.umask(0o022)
