@@ -12,6 +12,7 @@ class BaseRequest(object):
         self.parseDestination()
         self.parseAuthorization()
         self.parseLocktoken()
+        self.parseOverwrite()
 
     def parseDestination(self):
         self.destination = None
@@ -57,6 +58,13 @@ class BaseRequest(object):
                 self.locktoken = re.search("<opaquelocktoken:(.*)>", str(self.headers["If"])).group(1)
             except:
                 pass
+
+    def parseOverwrite(self):
+        self.overwrite = False
+
+        if self.headers.get("Overwrite"):
+            self.overwrite = self.headers.get("Overwrite") == "T"
+
 
 
 

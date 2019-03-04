@@ -3,10 +3,6 @@ class Authenticator(object):
     def authenticate(self, username, password):
         raise NotImplementedError()
 
-    def require_authentication(self, path):
-        raise NotImplementedError()
-
-
 class DebugAuthenticator(Authenticator):
     def authenticate(self, username, password):
         if username == password:
@@ -14,5 +10,24 @@ class DebugAuthenticator(Authenticator):
         else:
             return False
 
-    def require_authentication(self, path):
+class StaticAuthenticator(Authenticator):
+    def __init__(self, mapping):
+        self.mapping = mapping
+
+    def authenticate(self, username, password):
+        if not username in self.mapping:
+            return False
+
+        if not self.mapping[username] == password:
+            return False
+
         return True
+
+class PAMAuthenticator(Authenticator):
+    def __init__(self):
+        # noinspection PyUnresolvedReferences
+        import pam
+
+    def authenticate(self, username, password):
+        # noinspection PyUnresolvedReferences
+        return pam.authenticate(username, password)

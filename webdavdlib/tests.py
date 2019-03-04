@@ -45,5 +45,19 @@ class RequestParserTest(unittest.TestCase):
         request = webdavdlib.requests.BaseRequest("/home/test/test%20test.txt", {}, "")
         self.assertEqual(request.path, "/home/test/test test.txt")
 
+    def testOverwrite(self):
+        request = webdavdlib.requests.BaseRequest("", {"Overwrite": "T"}, "")
+        self.assertEqual(request.overwrite, True)
+
+        request = webdavdlib.requests.BaseRequest("", {"Overwrite": "F"}, "")
+        self.assertEqual(request.overwrite, False)
+
+        request = webdavdlib.requests.BaseRequest("", {"Overwrite": "non-valid"}, "")
+        self.assertEqual(request.overwrite, False)
+
+        request = webdavdlib.requests.BaseRequest("", {}, "")
+        self.assertEqual(request.overwrite, False)
+
+
 if __name__ == "__main__":
     unittest.main()
