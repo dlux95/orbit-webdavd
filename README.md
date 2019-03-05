@@ -31,15 +31,15 @@
     
     
   ## 8. Current WebDAV RFC compliance
-  | WebDAV Feature          |   v0.1  |
-  |-------------------------|:-------:|
-  | OPTIONS                 | &#9745; |
-  | GET                     | &#9745; |
-  | PROPFIND                | &#9745; |
-  | PUT                     | &#9745; |
-  | MKCOL                   | &#9745; |
-  | COPY                    |         |
-  | MOVE                    |         |
-  | DELETE                  | &#9745; |
-  | LOCK                    | &#9745; |
-  | UNLOCK                  | &#9745; |
+  | WebDAV Feature          | v0.1  		 |
+  |-------------------------|:------------------:|
+  | OPTIONS                 | :heavy_check_mark: |
+  | GET                     | :heavy_check_mark: |
+  | PROPFIND                | :heavy_check_mark: |
+  | PUT                     | :heavy_check_mark: |
+  | MKCOL                   | :heavy_check_mark: |
+  | COPY                    |         		 |
+  | MOVE                    |         		 |
+  | DELETE                  | :heavy_check_mark: |
+  | LOCK                    | :heavy_check_mark: |
+  | UNLOCK                  | :heavy_check_mark: |
