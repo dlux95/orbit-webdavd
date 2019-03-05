@@ -7,15 +7,16 @@ Different authenticator plugins allow for different authentication methods (PAM,
 Operators provide a way to act differently depending on user and context. These can be defined on a per virtual filesystem basis.
 
 ## Topics
-  1. [Provided virtual filesystem drivers]
-  2. [Virtual filesystem driver interface description]
-  3. [Provided authenticator systems]
-  4. [Authenticator interface description]
-  5. [Provided operator systems]
-  6. [Operator interface description]
-  7. [Configuration examples]
-  8. [Current WebDAV RFC compliance]
-
+  1. [Provided virtual filesystem drivers](#1.-Provided-virtual-filesystem-drivers)
+  2. [Virtual filesystem driver interface description](#2.-Virtual-filesystem-driver-interface-description)
+  3. [Provided authenticator systems](#3.-Provided-authenticator-systems)
+  4. [Authenticator interface description](#4.-Authenticator-interface-description)
+  5. [Provided operator systems](#5.-Provided-operator-systems)
+  6. [Operator interface description](#6.-Operator-interface-description)
+  7. [Configuration examples](#7.-Configuration-examples)
+  8. [Current WebDAV RFC compliance](#8.-Current-WebDAV-RFC-compliance)
+    
+    
   ## 8. Current WebDAV RFC compliance
   | WebDAV Feature          |   v0.1  |
   |-------------------------|:-------:|
