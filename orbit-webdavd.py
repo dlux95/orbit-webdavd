@@ -322,7 +322,23 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.do_PROPFIND()
 
-            
+
+    def copy_element(self, user, source, dest):
+        print("Copy element", source, dest)
+        if self.server.fs.get_props(self.user, Path(source).relative_to("/"), ["D:iscollection"])["D:iscollection"]:
+            self.server.fs.create(self.user, Path(dest).relative_to("/"))
+
+            children = self.server.fs.get_children(user, Path(source).relative_to("/"))
+            base = Path(source).relative_to("/")
+            for c in children:
+                c_source = "/" + c
+                c_destination = (Path(dest) / Path(c).relative_to(base)).as_posix()
+                self.copy_element(user, c_source, c_destination)
+        else:
+            self.server.fs.set_content(self.user, Path(dest).relative_to("/"),
+                                           self.server.fs.get_content(self.user,
+                                                                      Path(source).relative_to("/")))
+
 
     def do_MOVE(self):
         request = MOVERequest(self)
@@ -332,39 +348,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.info("[%s] MOVE Request on %s to %s" % (self.user, request.path, request.destination))
 
-        if (self.server.fs.get_props(self.user, Path(request.path).relative_to("/"), ["D:iscollection"])[
-            "D:iscollection"]):
-            copyqueue = [self.path]
+        self.copy_element(self.user, request.path, request.destination)
+        #self.server.fs.delete(self.user, Path(request.path).relative_to("/"))
 
-            while len(copyqueue) > 0:
-                element = copyqueue.pop()
-                self.log.debug("Copy Element " + element)
-                children = self.server.fs.get_children(self.user, Path(request.path).relative_to("/"))
-                for c in children:
-                    copyqueue.append(c)
-        else:
-            exists = True
-            try:
-                self.server.fs.get_props(self.user, Path(request.destination).relative_to("/"))
-            except NoSuchFileException:
-                exists = False
-
-                self.server.fs.set_content(self.user, Path(request.destination).relative_to("/"),
-                                           self.server.fs.get_content(self.user,
-                                                                      Path(request.path).relative_to("/")))
-                self.server.fs.delete(self.user, Path(request.path).relative_to("/"))
-
-            if exists:
-                self.log.debug("204 No-Content")
-                self.send_response(204, "No-Content")
-                self.send_header('Content-length', '0')
-                self.end_headers()
-            else:
-                self.log.debug("201 Created")
-                self.send_response(201, "Created")
-                self.send_header('Content-length', '0')
-                self.end_headers()
-
+        self.log.debug("204 No-Content")
+        self.send_response(204, "No-Content")
+        self.send_header('Content-length', '0')
+        self.end_headers()
 
     def do_COPY(self):
         request = COPYRequest(self)
@@ -491,8 +481,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         pass
-
-
 
 
 if __name__ == "__main__":
