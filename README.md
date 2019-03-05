@@ -15,3 +15,17 @@ Operators provide a way to act differently depending on user and context. These 
   6. Operator interface description
   7. Configuration examples
   8. Current WebDAV RFC compliance
+
+  ## 8. Current WebDAV RFC compliance
+  | WebDAV Feature          |   v0.1  |
+  |-------------------------|:-------:|
+  | OPTIONS                 | &#9745; |
+  | GET                     | &#9745; |
+  | PROPFIND                | &#9745; |
+  | PUT                     | &#9745; |
+  | MKCOL                   | &#9745; |
+  | COPY                    |         |
+  | MOVE                    |         |
+  | DELETE                  | &#9745; |
+  | LOCK                    | &#9745; |
+  | UNLOCK                  | &#9745; |
