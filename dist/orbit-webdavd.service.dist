@@ -1,0 +1,15 @@
+[Unit]
+Description=OrbitOS WebDAV Server
+After=multi-user.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/orbit-webdavd
+ExecStart=/usr/bin/python3 /opt/orbit-webdavd/orbit-webdavd.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
