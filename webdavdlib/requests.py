@@ -90,7 +90,7 @@ class MOVERequest(BaseRequest):
 
 class PROPFINDRequest(BaseRequest):
     def __init__(self, httprequest):
-        BaseRequest.__init__(httprequest)
+        BaseRequest.__init__(self, httprequest)
 
         self.parseIsExcel()
 
