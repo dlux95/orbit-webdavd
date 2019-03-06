@@ -240,6 +240,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             for resource in resqueue:
                 workingres = Path(unquote(resource))
                 resdata[workingres] = self.server.fs.get_props(self.user, workingres)
+                if request.isexcel:
+                    del resdata[workingres]["D:lastmodified"]
                 resdata[workingres]["lock"] = self.server.get_lock(self.server.fs.get_uid(self.user, workingres))
 
             w = WriteBuffer(self.wfile)

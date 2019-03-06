@@ -89,7 +89,18 @@ class MOVERequest(BaseRequest):
 
 
 class PROPFINDRequest(BaseRequest):
-    pass
+    def __init__(self, httprequest):
+        BaseRequest.__init__(httprequest)
+
+        self.parseIsExcel()
+
+    def parseIsExcel(self):
+        self.isexcel = False
+
+        if self.headers.get("User-Agent"):
+            if "Microsoft Office Excel" in self.headers.get("User-Agent"):
+                self.isexcel = True
+
 
 
 class DELETERequest(BaseRequest):
