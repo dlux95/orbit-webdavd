@@ -28,7 +28,7 @@ def getdirsize(path):
     return total_size
 
 
-STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
+STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes", "Office:modifiedby"]
 
 
 class Filesystem(object):
@@ -267,6 +267,9 @@ class DirectoryFilesystem(Filesystem):
                 return True
             else:
                 return False
+
+        elif prop == "Office:modifiedby":
+            return ""
 
         elif prop == "D:getetag":
             etag = hashlib.sha256()
