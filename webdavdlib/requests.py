@@ -98,7 +98,7 @@ class PROPFINDRequest(BaseRequest):
         self.isexcel = False
 
         if self.headers.get("User-Agent"):
-            if "Microsoft Office Excel" in self.headers.get("User-Agent"):
+            if "Excel" in self.headers.get("User-Agent"):
                 self.isexcel = True
 
 
