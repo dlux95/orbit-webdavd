@@ -335,9 +335,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 c_destination = (Path(dest) / Path(c).relative_to(base)).as_posix()
                 self.copy_element(user, c_source, c_destination)
         else:
-            self.server.fs.set_content(self.user, Path(dest).relative_to("/"),
+            try:
+                self.server.fs.get_props(self.user, Path(dest).relative_to("/"), ["D:iscollection"])["D:iscollection"]
+            except NoSuchFileException:
+                self.server.fs.set_content(self.user, Path(dest).relative_to("/"),
                                            self.server.fs.get_content(self.user,
                                                                       Path(source).relative_to("/")))
+
 
 
     def do_MOVE(self):
@@ -345,11 +349,10 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-
         self.log.info("[%s] MOVE Request on %s to %s" % (self.user, request.path, request.destination))
 
         self.copy_element(self.user, request.path, request.destination)
-        #self.server.fs.delete(self.user, Path(request.path).relative_to("/"))
+        self.server.fs.delete(self.user, Path(request.path).relative_to("/"))
 
         self.log.debug("204 No-Content")
         self.send_response(204, "No-Content")
@@ -361,40 +364,14 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        destination = self.get_destination()
-        self.log.info("[%s] COPY Request on %s to %s" % (self.user, self.path, destination))
+        self.log.info("[%s] COPY Request on %s to %s" % (self.user, request.path, request.destination))
 
+        self.copy_element(self.user, request.path, request.destination)
 
-        if(self.server.fs.get_props(self.user, Path(unquote(self.path)).relative_to("/"), ["D:iscollection"])["D:iscollection"]):
-            copyqueue = [self.path]
-
-            while len(copyqueue) > 0:
-                element = copyqueue.pop()
-                self.log.debug("Copy Element " + element)
-                children = self.server.fs.get_children(self.user, Path(unquote(self.path)).relative_to("/"))
-                for c in children:
-                    copyqueue.append(c)
-        else:
-            exists = True
-            try:
-                self.server.fs.get_props(self.user, Path(unquote(destination)).relative_to("/"))
-            except NoSuchFileException:
-                exists = False
-
-                self.server.fs.set_content(self.user, Path(unquote(destination)).relative_to("/"),
-                                           self.server.fs.get_content(self.user,
-                                                                      Path(unquote(self.path)).relative_to("/")))
-
-            if exists:
-                self.log.debug("204 No-Content")
-                self.send_response(204, "No-Content")
-                self.send_header('Content-length', '0')
-                self.end_headers()
-            else:
-                self.log.debug("201 Created")
-                self.send_response(201, "Created")
-                self.send_header('Content-length', '0')
-                self.end_headers()
+        self.log.debug("204 No-Content")
+        self.send_response(204, "No-Content")
+        self.send_header('Content-length', '0')
+        self.end_headers()
         
 
     def do_LOCK(self):
