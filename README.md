@@ -60,25 +60,25 @@
   TODO
     
   ## 8. Current WebDAV RFC compliance
-  | WebDAV Feature                      | v0.1  		         |
-  |-------------------------------------|:------------------:|
-  | OPTIONS                             | :heavy_check_mark: |
-  | PROPFIND                            | :heavy_check_mark: |
-  | PROPFIND with Depth-Header          | :heavy_check_mark: |
+  | WebDAV Feature                      | v0.1  		     | v0.2  		      |
+  |-------------------------------------|:------------------:|:------------------:|
+  | OPTIONS                             | :heavy_check_mark: | :heavy_check_mark: |
+  | PROPFIND                            | :heavy_check_mark: | :heavy_check_mark: |
+  | PROPFIND with Depth-Header          | :heavy_check_mark: | :heavy_check_mark: |
   | PROPFIND with XML-Props             |                    |
-  | PROPPATCH                           | *1                 |
-  | MKCOL                               | :heavy_check_mark: |
-  | MKCOL with Body                     | *2                 |
-  | GET                                 | :heavy_check_mark: |
-  | HEAD                                | :heavy_check_mark: |
-  | DELETE                              | :heavy_check_mark: |
-  | PUT                                 | :heavy_check_mark: |
-  | COPY                                |         		       |
-  | COPY with Overwrite: T              |         		       |
-  | MOVE                                |         		       |
-  | MOVE with Overwrite: T              |         		       |
-  | LOCK                                | :heavy_check_mark: |
-  | UNLOCK                              | :heavy_check_mark: |
+  | PROPPATCH                           | *1                 | *1                 |
+  | MKCOL                               | :heavy_check_mark: | :heavy_check_mark: |
+  | MKCOL with Body                     | *2                 | *2                 |
+  | GET                                 | :heavy_check_mark: | :heavy_check_mark: |
+  | HEAD                                | :heavy_check_mark: | :heavy_check_mark: |
+  | DELETE                              | :heavy_check_mark: | :heavy_check_mark: |
+  | PUT                                 | :heavy_check_mark: | :heavy_check_mark: |
+  | COPY                                |         		     | :heavy_check_mark: |
+  | COPY with Overwrite: T              |         		     |
+  | MOVE                                |         		     | :heavy_check_mark: |
+  | MOVE with Overwrite: T              |         		     |
+  | LOCK                                | :heavy_check_mark: | :heavy_check_mark: |
+  | UNLOCK                              | :heavy_check_mark: | :heavy_check_mark: |
 
   *1 Send a Dummy Response because dead properties are not supported yet  
   *2 RFC only defines that it can be used to create resources but no protocol specification 
