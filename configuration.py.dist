@@ -1,6 +1,6 @@
 from webdavdlib.filesystems import *
 from webdavdlib.authenticator import *
-from webdavdlib.operators import *
+from webdavdlib.operator import *
 
 
 def config_filesystems():
