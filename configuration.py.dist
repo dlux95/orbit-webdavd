@@ -1,16 +1,20 @@
 from webdavdlib.filesystems import *
+from webdavdlib.authenticator import *
+from webdavdlib.operators import *
 
 
 def config_filesystems():
     return MultiplexFilesystem({
-        "group": DirectoryFilesystem("/group"),
-        "home": HomeFilesystem("")
+        "group": DirectoryFilesystem("/group", [], NoneOperator())
+
     })
 
 
 def config_port():
     return 8080
 
+def config_authenticator():
+    return DebugAuthenticator()
 
 def config_loglevel():
     return "DEBUG"
