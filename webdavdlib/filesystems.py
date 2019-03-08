@@ -368,6 +368,7 @@ class MultiplexFilesystem(Filesystem):
                     "D:creationdate" : unixdate2httpdate(0),
                     "D:lastaccessed" : unixdate2httpdate(0),
                     "D:lastmodified" : unixdate2httpdate(0),
+                    "D:getlastmodified": unixdate2httpdate(0),
                     "D:resourcetype" : "<D:collection/>",
                     "D:iscollection" : True}
         else:
