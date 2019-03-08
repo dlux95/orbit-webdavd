@@ -178,12 +178,15 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 b.flush()
             else:
                 filedata = self.server.fs.get_content(self.user, Path(request.path).relative_to("/"))
+                ctype = props = self.server.fs.get_props(self.user, Path(request.path).relative_to("/"), ["D:getcontenttype"])["D:getcontenttype"]
+
                 b = WriteBuffer(self.wfile)
                 b.write(filedata)
 
                 self.log.debug("200 OK")
                 self.send_response(200, "OK")
                 self.send_header("Content-Length", str(b.getSize()))
+                self.send_header("Content-Type", ctype + "; charset=utf-8")
                 self.end_headers()
                 b.flush()
         except FileNotFoundError or NoSuchFileException:
