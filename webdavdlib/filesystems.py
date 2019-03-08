@@ -251,7 +251,7 @@ class DirectoryFilesystem(Filesystem):
             if ty != None:
                 return ty
             else:
-                return "application/octet-stream"
+                return False
 
         elif prop == "D:name" or prop == "D:displayname":
             return quote(path.relative_to(self.basepath).name, safe="/~.$")
@@ -369,7 +369,7 @@ class MultiplexFilesystem(Filesystem):
                     "D:lastaccessed" : unixdate2httpdate(0),
                     "D:lastmodified" : unixdate2httpdate(0),
                     "D:getlastmodified": unixdate2httpdate(0),
-                    "D:getcontentlength": "4096",
+                    "D:getcontentlength": 4096,
                     "D:resourcetype" : "<D:collection/>",
                     "D:iscollection" : True}
         else:
