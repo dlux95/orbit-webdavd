@@ -153,7 +153,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 for c in children:
                     print(c)
                     cdata = {}
-                    cdata["path"] = c
+                    cdata["path"] = quote(Path("/" + c).relative_to(request.path).as_posix())
                     cdata["name"] = Path("/" + c).relative_to(request.path).as_posix()
                     cdata["directory"] = self.server.fs.get_props(self.user, Path("/" + c).relative_to("/"), ["D:iscollection"])["D:iscollection"]
                     data.append(cdata)
