@@ -15,6 +15,7 @@
                         {% endif %}
                     {% endfor %}
                         <D:lockdiscovery>
+                            {%  if props["lock"] %}
                             <D:activelock>
                                 <D:locktype><D:write/></D:locktype>
                                 <D:lockscope><D:{{ props["lock"].mode }}/></D:lockscope>
@@ -23,6 +24,7 @@
                                 <D:timeout>{{ props["lock"].timeout }}</D:timeout>
                                 <D:locktoken><D:href>opaquelocktoken:{{ props["lock"].token }}</D:href></D:locktoken>
                             </D:activelock>
+                            {%  endif %}
                         </D:lockdiscovery>
                         <D:supportedlock>
                             <D:lockentry>
