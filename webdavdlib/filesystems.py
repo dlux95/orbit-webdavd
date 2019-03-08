@@ -28,7 +28,7 @@ def getdirsize(path):
     return total_size
 
 
-STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
+STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:getlastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
 
 
 class Filesystem(object):
@@ -228,7 +228,7 @@ class DirectoryFilesystem(Filesystem):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
             return unixdate2httpdate(path.stat().st_ctime)
 
-        elif prop == "D:lastmodified" or prop == "Z:Win32LastModifiedTime":
+        elif prop == "D:lastmodified" or prop == "Z:Win32LastModifiedTime" or prop == "D:getlastmodified":
             return unixdate2httpdate(path.stat().st_mtime)
 
         elif prop == "D:lastaccessed" or prop == "Z:Win32LastAccessTime":
