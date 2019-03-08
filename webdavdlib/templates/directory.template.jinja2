@@ -40,9 +40,9 @@
                 <ul>
                 {% for child in children %}
                     {% if child["directory"] %}
-                        <li><a href="{{ child["name"] }}/"><span class="folder"></span>{{ child["name"] }}</a></li>
+                        <li><a href="{{ child["name"]|e }}/"><span class="folder"></span>{{ child["name"] }}</a></li>
                     {% else %}
-                        <li><a href="{{ child["name"] }}"><span class="file"></span>{{ child["name"] }}</a></li>
+                        <li><a href="{{ child["name"]|e }}"><span class="file"></span>{{ child["name"] }}</a></li>
                     {% endif %}
                 {% endfor %}
                 </ul>
