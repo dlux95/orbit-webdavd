@@ -14,7 +14,7 @@ from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 from webdavdlib.requests import *
-
+from operator import itemgetter
 from configuration import *
 
 
@@ -30,7 +30,8 @@ class WebDAVServer(HTTPServer):
 
         self.templates = {
             "lock" : get_template("webdavdlib/templates/lock.template.jinja2"),
-            "propfind" : get_template("webdavdlib/templates/propfind.template.jinja2")
+            "propfind" : get_template("webdavdlib/templates/propfind.template.jinja2"),
+            "directory" : get_template("webdavdlib/templates/directory.template.jinja2")
         }
         self.locks = {}
 
@@ -148,8 +149,26 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
                 children = self.server.fs.get_children(self.user, Path(request.path).relative_to("/"))
 
+                data = []
+                for c in children:
+                    print(c)
+                    cdata = {}
+                    cdata["path"] = c
+                    cdata["name"] = Path("/" + c).relative_to(request.path).as_posix()
+                    cdata["directory"] = self.server.fs.get_props(self.user, Path("/" + c).relative_to("/"), ["D:iscollection"])["D:iscollection"]
+                    data.append(cdata)
+
+                if request.path != "/":
+                    data.append({
+                        "path" : "../",
+                        "name" : "..",
+                        "directory": True
+                    })
+
+                sort = sorted(data, key=lambda k: (not k["directory"], k["path"]))
+
                 b = WriteBuffer(self.wfile)
-                b.write(str(children))
+                b.write(self.server.templates["directory"].render(path=request.path, children=sort))
                 
                 self.log.debug("200 OK")
                 self.send_response(200, "OK")
