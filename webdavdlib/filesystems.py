@@ -251,7 +251,10 @@ class DirectoryFilesystem(Filesystem):
             if ty != None:
                 return ty
             else:
-                return False
+                if path.is_dir():
+                    return False
+                else:
+                    return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
             return quote(path.relative_to(self.basepath).name, safe="/~.$")
