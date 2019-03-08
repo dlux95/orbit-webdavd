@@ -70,6 +70,6 @@ def unixdate2httpdate(d):
 
 def get_template(filename):
     with open(filename) as file_:
-        template = Template(file_.read(), trim_blocks=True)
+        template = Template(file_.read(), trim_blocks=True, lstrip_blocks=True)
 
     return template
