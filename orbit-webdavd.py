@@ -173,7 +173,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 self.log.debug("200 OK")
                 self.send_response(200, "OK")
                 self.send_header("Content-Length", str(b.getSize()))
-                self.send_header("Content-Type: text/html")
+                self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
                 b.flush()
             else:
