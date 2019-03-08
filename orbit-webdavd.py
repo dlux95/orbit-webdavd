@@ -165,7 +165,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                         "directory": True
                     })
 
-                sort = sorted(data, key=lambda k: (not k["directory"], k["path"]))
+                sort = sorted(data, key=lambda k: (not k["directory"], k["path"].lower()))
 
                 b = WriteBuffer(self.wfile)
                 b.write(self.server.templates["directory"].render(path=request.path, children=sort))
