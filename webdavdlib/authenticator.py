@@ -29,4 +29,4 @@ class PAMAuthenticator(Authenticator):
         self.p = pam.pam()
 
     def authenticate(self, username, password):
-        return self.p.authenticate(username, password)
+        return self.p.authenticate(username, password, service="system-auth")
