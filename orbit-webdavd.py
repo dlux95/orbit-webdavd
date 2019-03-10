@@ -6,7 +6,7 @@ import json
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler, HTTPServer
 from time import strftime
 
-from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template
+from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template, remove_prefix
 from webdavdlib.exceptions import *
 from webdavdlib.filesystems import *
 from webdavdlib.requests import *
@@ -121,10 +121,9 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
                 data = []
                 for c in children:
-                    print(c)
                     cdata = {}
                     cdata["path"] = c
-                    cdata["name"] = c.lstrip(request.path)
+                    cdata["name"] = remove_prefix(c, request.path)
                     cdata["directory"] = self.server.fs.get_props(self.user, c, ["D:iscollection"])["D:iscollection"]
                     data.append(cdata)
 
