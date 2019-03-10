@@ -421,8 +421,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             w = WriteBuffer(self.wfile)
             w.write(self.server.templates["lock"].render(lock=lock))
  
-            self.log.debug("404 Not Found")
-            self.send_response(404, "Not Found")
+            self.log.debug("200 Ok")
+            self.send_response(200, "Ok")
             self.send_header("Lock-Token", "<opaquelocktoken:%s>" % lock.token)
             self.send_header("Content-type", 'text/xml')
             self.send_header("Charset", '"utf-8"')
