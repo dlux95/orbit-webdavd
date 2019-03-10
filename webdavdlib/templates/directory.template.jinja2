@@ -11,6 +11,14 @@
             list-style: none;
         }
 
+        body{
+            background: #273469;
+        }
+
+        .column{
+             background: #fff;
+        }
+
         .file {
             height: 3rem;
             width: 3rem;
@@ -36,10 +44,11 @@
         <div class="row">
             <div class="column">
                 <h2>{{ path }}</h2>
+                <hr />
                 <ul>
                 {% for child in children %}
                     {% if child["directory"] %}
-                        <li><a href="{{ child["path"] }}/"><span class="folder"></span>{{ child["name"] }}</a></li>
+                        <li><a href="{{ child["path"] }}"><span class="folder"></span>{{ child["name"] }}</a></li>
                     {% else %}
                         <li><a href="{{ child["path"] }}"><span class="file"></span>{{ child["name"] }}</a></li>
                     {% endif %}

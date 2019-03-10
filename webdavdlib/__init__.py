@@ -73,3 +73,18 @@ def get_template(filename):
         template = Template(file_.read(), trim_blocks=True, lstrip_blocks=True)
 
     return template
+
+# Join two (or more) paths.
+def path_join(patha, pathb):
+    patha = patha.rstrip("/")
+    pathb = pathb.lstrip("/")
+    return patha + "/" + pathb
+
+
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+    return text
+
+
+

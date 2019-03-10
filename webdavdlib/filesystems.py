@@ -12,6 +12,7 @@ from functools import lru_cache
 import mimetypes
 from urllib.parse import quote
 from webdavdlib.operator import *
+from  webdavdlib import path_join, remove_prefix
 
 
 def getdirsize(path):
@@ -19,7 +20,7 @@ def getdirsize(path):
     start_path = path
     for path, dirs, files in os.walk(start_path):
         for f in files:
-            fp = os.path.join(path, f)
+            fp = path_join(path, f)
             try:
                 total_size += os.path.getsize(fp)
             except:
@@ -116,7 +117,7 @@ class Filesystem(object):
 class DirectoryFilesystem(Filesystem):
     log = logging.getLogger("DirectoryFilesystem")
     def __init__(self, basepath, additional_dirs=[], operator=NoneOperator()):
-        self.basepath = pathlib.Path(basepath)
+        self.basepath = basepath
         self.additional_dirs = additional_dirs
         self.operator = operator
 
@@ -125,13 +126,13 @@ class DirectoryFilesystem(Filesystem):
 
 
     def convert_local_to_real(self, path):
-        realpath = self.basepath / path
+        realpath = self.basepath + path
 
         allowed = False
-        if realpath.as_posix().startswith(self.basepath.as_posix()):
+        if realpath.startswith(self.basepath):
             allowed = True
         for add_path in self.additional_dirs:
-            if realpath.as_posix().startswith(pathlib.Path(add_path).as_posix()):
+            if realpath.startswith(add_path):
                 allowed = True
 
         if not allowed:
@@ -144,7 +145,7 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_content(%s)" % path.as_posix())
+            self.log.debug("get_content(%s)" % path)
 
             with open(path, "rb") as f:
                 if start != -1:
@@ -161,10 +162,10 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("set_content(%s)" % path.as_posix())
+            self.log.debug("set_content(%s)" % path)
 
             mode = "wb"
-            if path.exists():
+            if os.path.exists(path):
                 mode = "r+b"
 
             with open(path, mode) as f:
@@ -180,10 +181,10 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("delete(%s)" % path.as_posix())
+            self.log.debug("delete(%s)" % path)
 
-            if path.is_file():
-                path.unlink()
+            if os.path.isfile(path):
+                os.unlink(path)
             else:
                 shutil.rmtree(path, ignore_errors=True)
         finally:
@@ -194,12 +195,12 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("create(%s)" % path.as_posix())
+            self.log.debug("create(%s)" % path)
 
             if dir:
-                path.mkdir(parents=False, exist_ok=False)
+                os.mkdir(path)
             else:
-                path.touch(exist_ok=False)
+                open(path, 'a').close()
         finally:
             self.operator.end(user)
 
@@ -208,16 +209,16 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_props(%s)" % path.as_posix())
+            self.log.debug("get_props(%s)" % path)
 
-            if not path.exists():
+            if not os.path.exists(path):
                 raise NoSuchFileException()
 
             propdata = {"D:status": "200 OK"}
 
             for prop in props:
                 propdata[prop] = self._get_prop(path, prop)
-                self.log.debug("Property %s: %s" % (prop, propdata[prop]))
+                self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
 
             return propdata
 
@@ -226,59 +227,59 @@ class DirectoryFilesystem(Filesystem):
 
     def _get_prop(self, path, prop):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
-            return unixdate2httpdate(path.stat().st_ctime)
+            return unixdate2httpdate(os.path.getctime(path))
 
         elif prop == "D:lastmodified" or prop == "Z:Win32LastModifiedTime" or prop == "D:getlastmodified":
-            return unixdate2httpdate(path.stat().st_mtime)
+            return unixdate2httpdate(os.path.getmtime(path))
 
         elif prop == "D:lastaccessed" or prop == "Z:Win32LastAccessTime":
-            return unixdate2httpdate(path.stat().st_mtime)
+            return unixdate2httpdate(os.path.getatime(path))
 
         elif prop == "Z:Win32FileAttributes":
             return "00000000"
 
         elif prop == "D:ishidden":
-            if path.name.startswith(".") or path.name.startswith("~"):
+            if os.path.split(path)[1].startswith(".") or os.path.split(path)[1].startswith("~"):
                 return "1"
             else:
                 return False
 
         elif prop == "D:getcontentlength":
-            return path.stat().st_size
+            return os.path.getsize(path)
 
         elif prop == "D:getcontenttype":
-            ty = mimetypes.guess_type(path.as_posix())[0]
+            ty = mimetypes.guess_type(path)[0]
             if ty != None:
                 return ty
             else:
-                if path.is_dir():
+                if os.path.isdir(path):
                     return False
                 else:
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return quote(path.relative_to(self.basepath).name, safe="/~.$")
+            return quote(os.path.basename(path), safe="/~.$")
 
         elif prop == "D:resourcetype":
-            if path.is_file():
+            if os.path.isfile(path):
                 return ""
-            if path.is_dir():
+            if os.path.isdir(path):
                 return "<D:collection/>"
 
         elif prop == "D:iscollection":
-            if path.is_dir():
+            if os.path.isdir(path):
                 return True
             else:
                 return False
 
         elif prop == "D:getetag":
             etag = hashlib.sha256()
-            etag.update(bytes(str(path.stat().st_size), "utf-8"))
-            etag.update(bytes(str(path.stat().st_mtime), "utf-8"))
-            etag.update(bytes(str(path.stat().st_atime), "utf-8"))
-            etag.update(bytes(str(path.stat().st_ctime), "utf-8"))
-            etag.update(bytes(str(path.stat().st_ino), "utf-8"))
-            etag.update(bytes(path.as_posix(), "utf-8"))
+            etag.update(bytes(str(os.path.getsize(path)), "utf-8"))
+            etag.update(bytes(str(os.path.getmtime(path)), "utf-8"))
+            etag.update(bytes(str(os.path.getctime(path)), "utf-8"))
+            etag.update(bytes(str(os.path.getatime(path)), "utf-8"))
+            etag.update(bytes(str(os.stat(path).st_ino), "utf-8"))
+            etag.update(bytes(path, "utf-8"))
             return "\"%s\"" % etag.hexdigest()
 
 
@@ -289,13 +290,13 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
 
         try:
-            path = self.convert_local_to_real(path)
-            self.log.debug("get_children(%s)" % path.as_posix())
+            rpath = self.convert_local_to_real(path)
+            self.log.debug("get_children(%s)" % path)
 
-            if path.is_dir():
+            if os.path.isdir(rpath):
                 l = []
-                for sub in path.iterdir():
-                    l.append(sub.relative_to(self.basepath).as_posix())
+                for sub in os.listdir(rpath):
+                    l.append(path_join(path, remove_prefix(sub, self.basepath)))
                 return l
             else:
                 return []
@@ -308,9 +309,9 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_uid(%s)" % path.as_posix())
+            self.log.debug("get_uid(%s)" % path)
 
-            return path.absolute().as_posix()
+            return os.path.abspath(path)
 
         finally:
             self.operator.end(user)
@@ -360,11 +361,12 @@ class SystemFilesystem(Filesystem):
 
 
 class MultiplexFilesystem(Filesystem):
+    log = logging.getLogger("MultiplexFilesystem")
     def __init__(self, filesystems):
         self.filesystems = filesystems
 
     def get_props(self, user, path, props=STDPROP):
-        if path == pathlib.Path("."):
+        if path == "/":
             # Root path, need to construct virtual folder
             return {"D:status" : "200 OK",
                     "D:name" : "/",
@@ -376,62 +378,65 @@ class MultiplexFilesystem(Filesystem):
                     "D:resourcetype" : "<D:collection/>",
                     "D:iscollection" : True}
         else:
-            vfs = path.parts[0]
+            vfs = "/" + path.split("/")[1]
             if vfs in self.filesystems:
-                return self.filesystems[vfs].get_props(user, path.relative_to(vfs), props)
+                return self.filesystems[vfs].get_props(user, "/" + remove_prefix(path, vfs), props)
             else:
                 raise NoSuchFileException()
 
     def get_children(self, user, path):
-        if path == pathlib.Path("."):
+        if path == "/":
             children = []
             for cpath, fs in self.filesystems.items():
-                children.append(pathlib.Path("/" + cpath).relative_to("/").as_posix())
+                children.append(cpath)
             return children
         else:
-            vfs = path.parts[0]
+            vfs = "/" + path.split("/")[1]
             if vfs in self.filesystems:
                 children = []
-                for cpath in self.filesystems[vfs].get_children(user, path.relative_to(vfs)):
-                    children.append(pathlib.Path("/" + vfs + "/" + cpath).relative_to("/").as_posix())
+                vfschildren = self.filesystems[vfs].get_children(user, "/" + remove_prefix(path, vfs))
+                self.log.debug("\tMultiplex children from %s" % (str(vfschildren)))
+                for cpath in vfschildren:
+                    children.append(path_join(vfs, cpath))
+                self.log.debug("\tMultiplex children to %s" % (str(children)))
                 return children
             else:
                 return []
 
     def get_content(self, user, path, start=-1, end=-1):
-        vfs = path.parts[0]
+        vfs = "/" + path.split("/")[1]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].get_content(user, path.relative_to(vfs), start, end)
+            return self.filesystems[vfs].get_content(user, "/" + remove_prefix(path, vfs), start, end)
         else:
             raise NoSuchFileException()
 
     def set_content(self, user, path, content, start=-1):
-        vfs = path.parts[0]
+        vfs = "/" + path.split("/")[1]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].set_content(user, path.relative_to(vfs), content, start)
+            return self.filesystems[vfs].set_content(user,  "/" + remove_prefix(path, vfs), content, start)
         else:
             raise Exception()
 
     def create(self, user, path, dir=True):
-        vfs = path.parts[0]
+        vfs = "/" + path.split("/")[1]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].create(user, path.relative_to(vfs), dir)
+            return self.filesystems[vfs].create(user,  "/" + remove_prefix(path, vfs), dir)
         else:
             raise Exception()
 
     def delete(self, user, path):
-        vfs = path.parts[0]
+        vfs = "/" + path.split("/")[1]
         if vfs in self.filesystems:
-            return self.filesystems[vfs].delete(user, path.relative_to(vfs))
+            return self.filesystems[vfs].delete(user,  "/" + remove_prefix(path, vfs))
         else:
             raise Exception()
 
     def get_uid(self, user, path):
-        if path == pathlib.Path("."):
+        if path == "/":
             return "root"
         else:
-            vfs = path.parts[0]
+            vfs = "/" + path.split("/")[1]
             if vfs in self.filesystems:
-                return self.filesystems[vfs].get_uid(user, path.relative_to(vfs))
+                return self.filesystems[vfs].get_uid(user,  "/" + remove_prefix(path, vfs))
             else:
                 raise Exception()

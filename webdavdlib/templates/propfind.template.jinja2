@@ -2,7 +2,7 @@
 <D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:" xmlns:Office="urn:schemas-microsoft-com:office:office">
     {%  for resource, props in resdata.items() %}
         <D:response>
-            <D:href>/{{ resource.as_posix().strip(".") | urlencode }}</D:href>
+            <D:href>/{{ resource | urlencode }}</D:href>
             <D:propstat>
                 <D:prop>
                     {% for propname, propvalue in props.items() %}
