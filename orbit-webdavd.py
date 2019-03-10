@@ -269,7 +269,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                     del resdata[workingres]["Z:Win32LastModifiedTime"]
                     del resdata[workingres]["Z:Win32LastAccessTime"]
 
-                print(resdata)
                 resdata[workingres]["lock"] = self.server.get_lock(self.server.fs.get_uid(self.user, workingres))
 
             w = WriteBuffer(self.wfile)
