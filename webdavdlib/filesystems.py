@@ -190,17 +190,17 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
 
         try:
-            path = self.convert_local_to_real(path)
+            rpath = self.convert_local_to_real(path)
             self.log.debug("get_props(%s)" % path)
 
-            if not os.path.exists(path):
+            if not os.path.exists(rpath):
                 raise FileNotFoundError()
 
             propdata = {"D:status": "200 OK"}
 
             try:
                 for prop in props:
-                    propdata[prop] = self._get_prop(path, prop)
+                    propdata[prop] = self._get_prop(rpath, prop, path)
                     self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
 
                 return propdata
@@ -209,7 +209,7 @@ class DirectoryFilesystem(Filesystem):
         finally:
             self.operator.end(user)
 
-    def _get_prop(self, path, prop):
+    def _get_prop(self, path, prop, urlpath):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
             return unixdate2httpdate(os.path.getctime(path))
 
@@ -242,7 +242,7 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return urllib.parse.quote(os.path.basename(path.rstrip("/")), safe="/~.$")
+            return urllib.parse.quote(os.path.basename(urlpath.rstrip("/")), safe="/~.$")
 
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
