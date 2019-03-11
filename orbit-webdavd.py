@@ -3,7 +3,7 @@ from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template, remove_p
 from webdavdlib.requests import *
 from configuration import *
 
-VERSION = "v0.2"
+VERSION = "v0.3"
 
 class WebDAVServer(HTTPServer):
     log = logging.getLogger("WebDAVServer")
