@@ -97,7 +97,7 @@ class DirectoryFilesystem(Filesystem):
         self.operator = operator
 
     def convert_local_to_real(self, path):
-        realpath = self.basepath + path
+        realpath = path_join(self.basepath, path)
 
         allowed = False
         if realpath.startswith(self.basepath):
@@ -242,7 +242,7 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return urllib.parse.quote(os.path.basename(path), safe="/~.$")
+            return urllib.parse.quote(os.path.basename(path.rstrip("/")), safe="/~.$")
 
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
