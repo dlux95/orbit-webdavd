@@ -7,7 +7,7 @@ STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate",
 
 
 class Filesystem(object):
-    def get_props(self, user, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP, orig_path=None):
         """
         Get properties of resource described by path.
 
@@ -186,21 +186,21 @@ class DirectoryFilesystem(Filesystem):
         finally:
             self.operator.end(user)
 
-    def get_props(self, user, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP, orig_path=None):
         self.operator.begin(user)
 
         try:
-            rpath = self.convert_local_to_real(path)
+            path = self.convert_local_to_real(path)
             self.log.debug("get_props(%s)" % path)
 
-            if not os.path.exists(rpath):
+            if not os.path.exists(path):
                 raise FileNotFoundError()
 
             propdata = {"D:status": "200 OK"}
 
             try:
                 for prop in props:
-                    propdata[prop] = self._get_prop(rpath, prop, path)
+                    propdata[prop] = self._get_prop(path, prop, orig_path)
                     self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
 
                 return propdata
@@ -209,7 +209,7 @@ class DirectoryFilesystem(Filesystem):
         finally:
             self.operator.end(user)
 
-    def _get_prop(self, path, prop, urlpath):
+    def _get_prop(self, path, prop, orig_path):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
             return unixdate2httpdate(os.path.getctime(path))
 
@@ -242,7 +242,9 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return urllib.parse.quote(os.path.basename(urlpath.rstrip("/")), safe="/~.$")
+            if path == "/" and orig_path:
+                return urllib.parse.quote(os.path.basename(orig_path.rstrip("/")), safe="/~.$")
+            return urllib.parse.quote(os.path.basename(path.rstrip("/")), safe="/~.$")
 
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
@@ -312,7 +314,7 @@ class HomeFilesystem(Filesystem):
     def get_filesystem(self, user):
          return DirectoryFilesystem(self.operator.get_home(user), self.additional_dirs, self.operator)
 
-    def get_props(self, user, path, props=STDPROP):
+    def get_props(self, user, path, props=STDPROP, orig_path=None):
         return self.get_filesystem(user).get_props(user, path, props)
 
     def get_children(self, user, path):
@@ -366,7 +368,7 @@ class MultiplexFilesystem(Filesystem):
         else:
             vfs = "/" + path.split("/")[1]
             if vfs in self.filesystems:
-                return self.filesystems[vfs].get_props(user, "/" + remove_prefix(path, vfs), props)
+                return self.filesystems[vfs].get_props(user, "/" + remove_prefix(path, vfs), props, path)
             else:
                 raise FileNotFoundError()
 
