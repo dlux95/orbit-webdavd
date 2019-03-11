@@ -226,7 +226,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 
             for resource in resqueue:
-                workingres = urllib.parse.quote(path_join("./", remove_prefix(resource, request.path)))
+                workingres = resource.lstrip("/")
                 print(workingres)
                 resdata[workingres] = self.server.fs.get_props(self.user, resource)
                 if request.isexcel:
