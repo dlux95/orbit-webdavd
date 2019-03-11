@@ -188,6 +188,8 @@ class DirectoryFilesystem(Filesystem):
 
     def get_props(self, user, path, props=STDPROP, orig_path=None):
         self.operator.begin(user)
+        if not orig_path:
+            orig_path = path
 
         try:
             path = self.convert_local_to_real(path)
@@ -242,10 +244,8 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            if path == "/" and orig_path:
-                return urllib.parse.quote(os.path.basename(orig_path.rstrip("/")), safe="/~.$")
-            return urllib.parse.quote(os.path.basename(path.rstrip("/")), safe="/~.$")
-
+            return urllib.parse.quote(os.path.basename(orig_path.rstrip("/")), safe="/~.$")
+           
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
                 return ""
