@@ -2,60 +2,67 @@
 <html lang="en">
 <head>
   <title>WebDAV - {{ path }}</title>
-
-    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
-    <link rel="stylesheet" href="//cdn.rawgit.com/necolas/normalize.css/master/normalize.css">
-    <link rel="stylesheet" href="//cdn.rawgit.com/milligram/milligram/master/dist/milligram.min.css">
     <style>
-        ul {
-            list-style: none;
-        }
-
         body{
             background: #273469;
+            font-family: Verdana, "Lucida Sans Unicode", sans-serif;
         }
-
-        .column{
+        .container{
              background: #fff;
+            max-width: 960px;
+            margin: 5px auto;
+            border-radius: 2px;
+            padding: 10px 20px;
         }
-
-        .file {
-            height: 3rem;
-            width: 3rem;
-            position: relative;
-            top: 1rem;
-            margin-right: 1rem;
-            content: url("data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJmaWxlIiBjbGFzcz0ic3ZnLWlubGluZS0tZmEgZmEtZmlsZSBmYS13LTEyIiByb2xlPSJpbWciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDM4NCA1MTIiPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZD0iTTIyNCAxMzZWMEgyNEMxMC43IDAgMCAxMC43IDAgMjR2NDY0YzAgMTMuMyAxMC43IDI0IDI0IDI0aDMzNmMxMy4zIDAgMjQtMTAuNyAyNC0yNFYxNjBIMjQ4Yy0xMy4yIDAtMjQtMTAuOC0yNC0yNHptMTYwLTE0LjF2Ni4xSDI1NlYwaDYuMWM2LjQgMCAxMi41IDIuNSAxNyA3bDk3LjkgOThjNC41IDQuNSA3IDEwLjYgNyAxNi45eiI+PC9wYXRoPjwvc3ZnPg==");
+        ul{
+            padding: 0;
+            margin: 0 -15px;
         }
-
-        .folder {
-            height: 3rem;
-            width: 3rem;
-            position: relative;
-            top: 1rem;
-            margin-right: 1rem;
-            content: url("data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJmb2xkZXIiIGNsYXNzPSJzdmctaW5saW5lLS1mYSBmYS1mb2xkZXIgZmEtdy0xNiIgcm9sZT0iaW1nIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGQ9Ik00NjQgMTI4SDI3MmwtNjQtNjRINDhDMjEuNDkgNjQgMCA4NS40OSAwIDExMnYyODhjMCAyNi41MSAyMS40OSA0OCA0OCA0OGg0MTZjMjYuNTEgMCA0OC0yMS40OSA0OC00OFYxNzZjMC0yNi41MS0yMS40OS00OC00OC00OHoiPjwvcGF0aD48L3N2Zz4=");
+        a {
+            margin: 1rem;
+            padding-left: 2rem;
+            background-repeat: no-repeat;
+            display: list-item;
+            list-style-type: none;
         }
+        a.file {
+            background-image: url("data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJmaWxlIiBjbGFzcz0ic3ZnLWlubGluZS0tZmEgZmEtZmlsZSBmYS13LTEyIiByb2xlPSJpbWciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDM4NCA1MTIiPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZD0iTTIyNCAxMzZWMEgyNEMxMC43IDAgMCAxMC43IDAgMjR2NDY0YzAgMTMuMyAxMC43IDI0IDI0IDI0aDMzNmMxMy4zIDAgMjQtMTAuNyAyNC0yNFYxNjBIMjQ4Yy0xMy4yIDAtMjQtMTAuOC0yNC0yNHptMTYwLTE0LjF2Ni4xSDI1NlYwaDYuMWM2LjQgMCAxMi41IDIuNSAxNyA3bDk3LjkgOThjNC41IDQuNSA3IDEwLjYgNyAxNi45eiI+PC9wYXRoPjwvc3ZnPg==");
+            background-position-x: 0.2rem;
+        }
+        a.folder {
+            background-image: url("data:image/svg+xml;base64,PHN2ZyBhcmlhLWhpZGRlbj0idHJ1ZSIgZm9jdXNhYmxlPSJmYWxzZSIgZGF0YS1wcmVmaXg9ImZhcyIgZGF0YS1pY29uPSJmb2xkZXIiIGNsYXNzPSJzdmctaW5saW5lLS1mYSBmYS1mb2xkZXIgZmEtdy0xNiIgcm9sZT0iaW1nIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGQ9Ik00NjQgMTI4SDI3MmwtNjQtNjRINDhDMjEuNDkgNjQgMCA4NS40OSAwIDExMnYyODhjMCAyNi41MSAyMS40OSA0OCA0OCA0OGg0MTZjMjYuNTEgMCA0OC0yMS40OSA0OC00OFYxNzZjMC0yNi41MS0yMS40OS00OC00OC00OHoiPjwvcGF0aD48L3N2Zz4=");
+        }
+        a.dotfile { font-style: italic; }
+        body.dothidden a.dotfile{ display: none; }
     </style>
 </head>
-<body>
+<body id="body" class="dothidden">
 
-    <div class="container">
-        <div class="row">
-            <div class="column">
+            <div class="container">
                 <h2>{{ path }}</h2>
-                <hr />
+            </div>
+            <div class="container">
+                <button onclick="toggleDot()">Toggle Hidden</button>
+            </div>
+            <div class="container">
                 <ul>
                 {% for child in children %}
                     {% if child["directory"] %}
-                        <li><a href="{{ child["path"] }}"><span class="folder"></span>{{ child["name"] }}</a></li>
+                        <a class="folder{% if child["hidden"] %} dotfile {% endif %}" href="{{ child["path"] }}">{{ child["name"] }}</a>
                     {% else %}
-                        <li><a href="{{ child["path"] }}"><span class="file"></span>{{ child["name"] }}</a></li>
+                        <a class="file{% if child["hidden"] %} dotfile {% endif %}" href="{{ child["path"] }}">{{ child["name"] }}</a>
                     {% endif %}
                 {% endfor %}
                 </ul>
             </div>
-        </div>
-    </div>
+    <script>
+        function toggleDot(){
+            if(document.getElementById("body").getAttribute("class") == "dothidden") {
+                document.getElementById("body").setAttribute("class", "");
+            }else{
+                document.getElementById("body").setAttribute("class", "dothidden");
+            }
+        }
+    </script>
 </body>
 </html>

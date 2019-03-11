@@ -114,12 +114,14 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                     cdata["path"] = c
                     cdata["name"] = remove_prefix(c, request.path)
                     cdata["directory"] = self.server.fs.get_props(self.user, c, ["D:iscollection"])["D:iscollection"]
+                    cdata["hidden"] = self.server.fs.get_props(self.user, c, ["D:ishidden"])["D:ishidden"]
                     data.append(cdata)
 
                 if request.path != "/":
                     data.append({
                         "path" : os.path.split(request.path)[0],
                         "name" : "..",
+                        "hidden" : False,
                         "directory": True
                     })
 
@@ -333,7 +335,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         else:
             try:
                 self.server.fs.get_props(self.user, dest, ["D:iscollection"])["D:iscollection"]
-            except NoSuchFileException:
+            except FileNotFoundError:
                 self.server.fs.set_content(self.user, dest, self.server.fs.get_content(self.user, source))
 
 
