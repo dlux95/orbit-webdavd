@@ -1,18 +1,7 @@
-import io
-import re
-import logging
-import base64
-import json
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler, HTTPServer
-from time import strftime
-
 from webdavdlib import Lock, SystemdHandler, WriteBuffer, get_template, remove_prefix
-from webdavdlib.exceptions import *
-from webdavdlib.filesystems import *
 from webdavdlib.requests import *
-from operator import itemgetter
 from configuration import *
-
 
 VERSION = "v0.2"
 
@@ -158,7 +147,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", ctype + "; charset=utf-8")
                 self.end_headers()
                 b.flush()
-        except FileNotFoundError or NoSuchFileException:
+        except FileNotFoundError:
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")
             self.end_headers()
@@ -177,22 +166,26 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         exists = True
         try:
             self.server.fs.get_props(self.user, request.path)
-        except NoSuchFileException:
+        except FileNotFoundError:
             exists = False
 
-        result = self.server.fs.set_content(self.user, request.path, request.data)
+        try:
+            result = self.server.fs.set_content(self.user, request.path, request.data)
 
-        if exists:
-            self.log.debug("204 No-Content")
-            self.send_response(204, "No-Content")
-            self.send_header('Content-length', '0')
+            if exists:
+                self.log.debug("204 No-Content")
+                self.send_response(204, "No-Content")
+                self.send_header('Content-length', '0')
+                self.end_headers()
+            else:
+                self.log.debug("201 Created")
+                self.send_response(201, "Created")
+                self.send_header('Content-length', '0')
+                self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
             self.end_headers()
-        else:
-            self.log.debug("201 Created")
-            self.send_response(201, "Created")
-            self.send_header('Content-length', '0')
-            self.end_headers()
-
 
     def do_OPTIONS(self):
         self.log.info("[%s] OPTIONS Request on %s" % (self.user, self.path))
@@ -252,7 +245,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             w.flush()
             
-        except NoSuchFileException:
+        except FileNotFoundError:
             self.log.debug("404 Not Found")
             self.send_response(404, "Not Found")  # Multi-Status
             self.end_headers()
@@ -305,11 +298,16 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.info("[%s] MKCOL Request on %s with length %d" % (self.user, request.path, len(request.data)))
 
-        self.server.fs.create(self.user, request.path, dir=True)
+        try:
+            self.server.fs.create(self.user, request.path, dir=True)
 
-        self.log.debug("201 Created")
-        self.send_response(201, "Created")
-        self.end_headers()
+            self.log.debug("201 Created")
+            self.send_response(201, "Created")
+            self.end_headers()
+        except PermissionError:
+            self.log.debug("403 Forbidden")
+            self.send_response(403, "Forbidden")
+            self.end_headers()
 
     def do_PROPPATCH(self):
         #request = PROPPATCHRequest(self)
@@ -381,7 +379,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         try:
             self.server.fs.get_props(self.user, request.path)
-        except NoSuchFileException:
+        except FileNotFoundError:
             uid = self.server.fs.get_uid(self.user, request.path)
             lock = Lock(uid, request.lockowner, "exclusive", "infinity", "Second-300")
             self.server.set_lock(uid, lock)

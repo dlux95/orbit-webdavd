@@ -1,6 +1,6 @@
+import base64, re
 from urllib.parse import urlparse, unquote
-import base64
-import re
+
 
 class BaseRequest(object):
     def __init__(self, httprequest):

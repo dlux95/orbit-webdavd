@@ -1,9 +1,5 @@
-import random
-import logging
-import sys
-import io
+import random, logging, sys, io, time
 from jinja2 import Template
-from time import strftime, localtime, gmtime, timezone
 
 class Lock(object):
     def __init__(self, uid, owner, mode, depth, timeout):
@@ -61,12 +57,12 @@ class WriteBuffer:
         return len(self.buf.getvalue())
 
 def unixdate2iso8601(d):
-    tz = timezone / 3600 # can it be fractional?
+    tz = time.timezone / 3600 # can it be fractional?
     tz = '%+03d' % tz
-    return strftime('%Y-%m-%dT%H:%M:%S', localtime(d)) + tz + ':00'
+    return time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(d)) + tz + ':00'
 
 def unixdate2httpdate(d):
-    return strftime('%a, %d %b %Y %H:%M:%S GMT', gmtime(d))
+    return time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(d))
 
 def get_template(filename):
     with open(filename) as file_:

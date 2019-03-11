@@ -1,32 +1,6 @@
-import pathlib
-import webdavdlib.exceptions
-from webdavdlib.exceptions import *
-import webdavdlib
-import random
-import hashlib
-import os
-import shutil
-import logging
-from webdavdlib import unixdate2httpdate, unixdate2iso8601
-from functools import lru_cache
-import mimetypes
-from urllib.parse import quote
+import hashlib, mimetypes, shutil, logging, urllib.parse
+from webdavdlib import unixdate2httpdate, path_join, remove_prefix
 from webdavdlib.operator import *
-from  webdavdlib import path_join, remove_prefix
-
-
-def getdirsize(path):
-    total_size = 0
-    start_path = path
-    for path, dirs, files in os.walk(start_path):
-        for f in files:
-            fp = path_join(path, f)
-            try:
-                total_size += os.path.getsize(fp)
-            except:
-                pass
-
-    return total_size
 
 
 STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:getlastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
@@ -116,14 +90,11 @@ class Filesystem(object):
 
 class DirectoryFilesystem(Filesystem):
     log = logging.getLogger("DirectoryFilesystem")
+
     def __init__(self, basepath, additional_dirs=[], operator=NoneOperator()):
         self.basepath = basepath
         self.additional_dirs = additional_dirs
         self.operator = operator
-
-        #if not self.basepath.is_dir():
-         #   raise webdavdlib.exceptions.NoSuchFileException()
-
 
     def convert_local_to_real(self, path):
         realpath = self.basepath + path
@@ -147,14 +118,17 @@ class DirectoryFilesystem(Filesystem):
             path = self.convert_local_to_real(path)
             self.log.debug("get_content(%s)" % path)
 
-            with open(path, "rb") as f:
-                if start != -1:
-                    f.seek(start)
+            try:
+                with open(path, "rb") as f:
+                    if start != -1:
+                        f.seek(start)
 
-                if end != -1:
-                    return f.read(end-start)
-                else:
-                    return f.read()
+                    if end != -1:
+                        return f.read(end-start)
+                    else:
+                        return f.read()
+            except PermissionError:
+                raise PermissionError()
         finally:
             self.operator.end(user)
 
@@ -163,16 +137,18 @@ class DirectoryFilesystem(Filesystem):
         try:
             path = self.convert_local_to_real(path)
             self.log.debug("set_content(%s)" % path)
-
             mode = "wb"
             if os.path.exists(path):
                 mode = "r+b"
 
-            with open(path, mode) as f:
-                if start != -1:
-                    f.seek(start)
+            try:
+                with open(path, mode) as f:
+                    if start != -1:
+                        f.seek(start)
 
-                f.write(content)
+                    f.write(content)
+            except PermissionError:
+                raise PermissionError()
         finally:
             self.operator.end(user)
 
@@ -183,10 +159,13 @@ class DirectoryFilesystem(Filesystem):
             path = self.convert_local_to_real(path)
             self.log.debug("delete(%s)" % path)
 
-            if os.path.isfile(path):
-                os.unlink(path)
-            else:
-                shutil.rmtree(path, ignore_errors=True)
+            try:
+                if os.path.isfile(path):
+                    os.unlink(path)
+                else:
+                    shutil.rmtree(path, ignore_errors=True)
+            except PermissionError:
+                raise PermissionError
         finally:
             self.operator.end(user)
 
@@ -197,10 +176,13 @@ class DirectoryFilesystem(Filesystem):
             path = self.convert_local_to_real(path)
             self.log.debug("create(%s)" % path)
 
-            if dir:
-                os.mkdir(path)
-            else:
-                open(path, 'a').close()
+            try:
+                if dir:
+                    os.mkdir(path)
+                else:
+                    open(path, 'a').close()
+            except PermissionError:
+                raise PermissionError
         finally:
             self.operator.end(user)
 
@@ -212,16 +194,18 @@ class DirectoryFilesystem(Filesystem):
             self.log.debug("get_props(%s)" % path)
 
             if not os.path.exists(path):
-                raise NoSuchFileException()
+                raise FileNotFoundError()
 
             propdata = {"D:status": "200 OK"}
 
-            for prop in props:
-                propdata[prop] = self._get_prop(path, prop)
-                self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
+            try:
+                for prop in props:
+                    propdata[prop] = self._get_prop(path, prop)
+                    self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
 
-            return propdata
-
+                return propdata
+            except PermissionError:
+                raise PermissionError
         finally:
             self.operator.end(user)
 
@@ -258,7 +242,7 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            return quote(os.path.basename(path), safe="/~.$")
+            return urllib.parse.quote(os.path.basename(path), safe="/~.$")
 
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
@@ -293,14 +277,16 @@ class DirectoryFilesystem(Filesystem):
             rpath = self.convert_local_to_real(path)
             self.log.debug("get_children(%s)" % path)
 
-            if os.path.isdir(rpath):
-                l = []
-                for sub in os.listdir(rpath):
-                    l.append(path_join(path, remove_prefix(sub, self.basepath)))
-                return l
-            else:
-                return []
-
+            try:
+                if os.path.isdir(rpath):
+                    l = []
+                    for sub in os.listdir(rpath):
+                        l.append(path_join(path, remove_prefix(sub, self.basepath)))
+                    return l
+                else:
+                    return []
+            except PermissionError:
+                raise PermissionError()
         finally:
             self.operator.end(user)
 
@@ -382,7 +368,7 @@ class MultiplexFilesystem(Filesystem):
             if vfs in self.filesystems:
                 return self.filesystems[vfs].get_props(user, "/" + remove_prefix(path, vfs), props)
             else:
-                raise NoSuchFileException()
+                raise FileNotFoundError()
 
     def get_children(self, user, path):
         if path == "/":
@@ -408,7 +394,7 @@ class MultiplexFilesystem(Filesystem):
         if vfs in self.filesystems:
             return self.filesystems[vfs].get_content(user, "/" + remove_prefix(path, vfs), start, end)
         else:
-            raise NoSuchFileException()
+            raise FileNotFoundError()
 
     def set_content(self, user, path, content, start=-1):
         vfs = "/" + path.split("/")[1]

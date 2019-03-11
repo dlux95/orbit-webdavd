@@ -1,5 +1,4 @@
-from functools import lru_cache
-import os
+import os, functools
 
 class BaseOperator(object):
     def begin(self, user):
@@ -24,7 +23,7 @@ class UnixOperator(BaseOperator):
         self.counter = 0
         self.umask = umask
 
-    @lru_cache(maxsize=512)
+    @functools.lru_cache(maxsize=512)
     def get_groups(self, username):
         os.initgroups(username, self.pwd.getpwnam(username)[3])
         g = os.getgroups()
@@ -32,7 +31,7 @@ class UnixOperator(BaseOperator):
 
         return g
 
-    @lru_cache(maxsize=512)
+    @functools.lru_cache(maxsize=512)
     def get_pwnam(self, username):
         return self.pwd.getpwnam(username)
 
