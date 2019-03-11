@@ -244,8 +244,9 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
+            print(orig_path)
             return urllib.parse.quote(os.path.basename(orig_path.rstrip("/")), safe="/~.$")
-           
+
         elif prop == "D:resourcetype":
             if os.path.isfile(path):
                 return ""

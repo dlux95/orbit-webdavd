@@ -226,15 +226,16 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 
             for resource in resqueue:
-                workingres = resource
-                resdata[workingres] = self.server.fs.get_props(self.user, workingres)
+                workingres = path_join("./", remove_prefix(resource, request.path))
+                print(workingres)
+                resdata[workingres] = self.server.fs.get_props(self.user, resource)
                 if request.isexcel:
                     del resdata[workingres]["D:lastmodified"]
                     del resdata[workingres]["D:lastaccessed"]
                     del resdata[workingres]["Z:Win32LastModifiedTime"]
                     del resdata[workingres]["Z:Win32LastAccessTime"]
 
-                resdata[workingres]["lock"] = self.server.get_lock(self.server.fs.get_uid(self.user, workingres))
+                resdata[workingres]["lock"] = self.server.get_lock(self.server.fs.get_uid(self.user, resource))
 
             w = WriteBuffer(self.wfile)
             w.write(self.server.templates["propfind"].render(resdata=resdata))
