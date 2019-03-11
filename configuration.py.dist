@@ -5,8 +5,7 @@ from webdavdlib.operator import *
 
 def config_filesystems():
     return MultiplexFilesystem({
-        "group": DirectoryFilesystem("/group", [], NoneOperator())
-
+        "/group": DirectoryFilesystem("/group", [], NoneOperator())
     })
 
 
