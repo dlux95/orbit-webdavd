@@ -1,7 +1,9 @@
 import hashlib, mimetypes, shutil, logging, urllib.parse
 from webdavdlib import unixdate2httpdate, path_join, remove_prefix
 from webdavdlib.operator import *
+import threading
 
+lock = threading.Lock();
 
 STDPROP = ["D:name", "D:getcontenttype", "D:getcontentlength", "D:creationdate", "D:lastaccessed", "D:lastmodified", "D:getlastmodified", "D:resourcetype", "D:iscollection", "D:ishidden", "D:getetag", "D:displayname", "Z:Win32CreationTime", "Z:Win32LastAccessTime", "Z:Win32LastModifiedTime", "Z:Win32FileAttributes"]
 
@@ -113,6 +115,7 @@ class DirectoryFilesystem(Filesystem):
         return realpath
 
     def get_content(self, user, path, start=-1, end=-1):
+        lock.acquire()
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
@@ -131,8 +134,10 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError()
         finally:
             self.operator.end(user)
+            lock.release()
 
     def set_content(self, user, path, content, start=-1):
+        lock.acquire()
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
@@ -151,8 +156,10 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError()
         finally:
             self.operator.end(user)
+            lock.release()
 
     def delete(self, user, path):
+        lock.acquire()
         self.operator.begin(user)
 
         try:
@@ -168,8 +175,10 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError
         finally:
             self.operator.end(user)
+            lock.release()
 
     def create(self, user, path, dir=True):
+        lock.acquire()
         self.operator.begin(user)
 
         try:
@@ -185,8 +194,10 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError
         finally:
             self.operator.end(user)
+            lock.release()
 
     def get_props(self, user, path, props=STDPROP, orig_path=None):
+        lock.acquire()
         self.operator.begin(user)
         if not orig_path:
             orig_path = path
@@ -210,6 +221,7 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError
         finally:
             self.operator.end(user)
+            lock.release()
 
     def _get_prop(self, path, prop, orig_path):
         if prop == "D:creationdate" or prop == "Z:Win32CreationTime":
@@ -274,6 +286,7 @@ class DirectoryFilesystem(Filesystem):
             return False
 
     def get_children(self, user, path):
+        lock.acquire()
         self.operator.begin(user)
 
         try:
@@ -292,8 +305,10 @@ class DirectoryFilesystem(Filesystem):
                 raise PermissionError()
         finally:
             self.operator.end(user)
+            lock.release()
 
     def get_uid(self, user, path):
+        lock.acquire()
         self.operator.begin(user)
 
         try:
@@ -304,7 +319,7 @@ class DirectoryFilesystem(Filesystem):
 
         finally:
             self.operator.end(user)
-
+            lock.release()
 
 class HomeFilesystem(Filesystem):
     def __init__(self, basepath, additional_dirs=[], operator=None):

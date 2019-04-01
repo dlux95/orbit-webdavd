@@ -5,7 +5,8 @@ from configuration import *
 
 VERSION = "v0.4"
 
-class WebDAVServer(HTTPServer):
+
+class WebDAVServer(ThreadingHTTPServer):
     log = logging.getLogger("WebDAVServer")
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         ThreadingHTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
