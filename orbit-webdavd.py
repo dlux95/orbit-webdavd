@@ -84,8 +84,6 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
         self.log.info(request)
 
-
-
         filedata = self.server.fs.get_content(self.user, request.path)
         b = WriteBuffer(self.wfile)
         b.write(filedata)
@@ -229,7 +227,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
             for resource in resqueue:
                 workingres = resource.lstrip("/")
-                print(workingres)
+                #print(workingres)
                 resdata[workingres] = self.server.fs.get_props(self.user, resource)
                 if request.isexcel:
                     del resdata[workingres]["D:lastmodified"]
@@ -324,7 +322,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
 
 
     def copy_element(self, user, source, dest):
-        print("Copy element", source, dest)
+        #print("Copy element", source, dest)
         if self.server.fs.get_props(self.user, source, ["D:iscollection"])["D:iscollection"]:
             self.server.fs.create(self.user, dest)
 
