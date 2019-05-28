@@ -322,13 +322,17 @@ class DirectoryFilesystem(Filesystem):
             lock.release()
 
 class HomeFilesystem(Filesystem):
-    def __init__(self, basepath, additional_dirs=[], operator=None):
+    def __init__(self, basepath, additional_dirs=[], operator=None, prefix=None):
         self.basepath = basepath
         self.additional_dirs = additional_dirs
         self.operator = operator
+        self.prefix = prefix
 
     def get_filesystem(self, user):
-         return DirectoryFilesystem(self.operator.get_home(user), self.additional_dirs, self.operator)
+        if self.prefix != None:
+            return DirectoryFilesystem(path_join(self.prefix, self.operator.get_home(user)), self.additional_dirs, self.operator)
+        else:
+            return DirectoryFilesystem(self.operator.get_home(user), self.additional_dirs, self.operator)
 
     def get_props(self, user, path, props=STDPROP, orig_path=None):
         return self.get_filesystem(user).get_props(user, path, props)
