@@ -82,7 +82,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        self.log.info("[%s] HEAD Request on %s" % (self.user, request.path))
+        self.log.info(request)
 
 
 
@@ -100,8 +100,7 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        self.log.info("[%s] GET Request on %s" % (self.user, request.path))
-
+        self.log.info(request)
 
         try:
             props = self.server.fs.get_props(self.user, request.path, ["D:iscollection"])
@@ -163,8 +162,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         request = PUTRequest(self)
         if self.require_auth(request):
             return
-
-        self.log.info("[%s] PUT Request on %s with length %d" % (self.user, request.path, len(request.data)))
+        
+        self.log.info(request)
 
         exists = True
         try:
@@ -208,9 +207,11 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
+        self.log.info(request)
+        
         data = request.data
         depth = request.depth
-        self.log.info("[%s] PROPFIND Request on %s with depth %s and length %d" % (self.user, request.path, depth, len(data)))
+        
         try:
             resqueue = [request.path]
             resdata = {}
@@ -263,8 +264,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        self.log.info("[%s] DELETE Request on %s" % (self.user, request.path))
-
+        self.log.info(request)
+        
         uid = self.server.fs.get_uid(self.user, request.path)
         lock = server.get_lock(uid)
 
@@ -299,9 +300,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-
-        self.log.info("[%s] MKCOL Request on %s with length %d" % (self.user, request.path, len(request.data)))
-
+        self.log.info(request)
+        
         try:
             self.server.fs.create(self.user, request.path, dir=True)
 
@@ -314,13 +314,13 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_PROPPATCH(self):
-        #request = PROPPATCHRequest(self)
-        #if self.require_auth(request):
-            #return
+        request = PROPPATCHRequest(self)
+        if self.require_auth(request):
+            return
 
-        #self.log.info("[%s] PROPPATCH Request on %s with length %d" % (self.user, request.path, len(request.data)))
-
-        self.do_PROPFIND()
+        self.log.info(request)
+        
+        #self.do_PROPFIND()
 
 
     def copy_element(self, user, source, dest):
@@ -347,8 +347,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        self.log.info("[%s] MOVE Request on %s to %s" % (self.user, request.path, request.destination))
-
+        self.log.info(request)
+        
         self.copy_element(self.user, request.path, request.destination)
         self.server.fs.delete(self.user, request.path)
 
@@ -362,8 +362,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
         if self.require_auth(request):
             return
 
-        self.log.info("[%s] COPY Request on %s to %s" % (self.user, request.path, request.destination))
-
+        self.log.info(request)
+        
         self.copy_element(self.user, request.path, request.destination)
 
         self.log.debug("204 No-Content")
@@ -378,8 +378,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             return
 
         data = request.data
-        self.log.info("[%s] LOCK Request on %s with length %d" % (self.user, request.path, len(data)))
-
+        self.log.info(request)
+        
 
         try:
             self.server.fs.get_props(self.user, request.path)
@@ -431,8 +431,8 @@ class WebDAVRequestHandler(BaseHTTPRequestHandler):
             return
 
         data = request.data
-        self.log.info("[%s] UNLOCK Request on %s with length %d" % (self.user, request.path, len(data)))
-
+        self.log.info(request)
+        
         locktoken = request.locktoken
 
         uid = self.server.fs.get_uid(self.user, request.path)

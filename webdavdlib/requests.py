@@ -67,6 +67,9 @@ class BaseRequest(object):
         if self.headers.get("Overwrite"):
             self.overwrite = self.headers.get("Overwrite") == "T"
 
+    def __str__(self):
+        return "%s: [Path: %s, Depth: %s, Destination: %s, Locktoken: %s, Overwrite: %s]" % (self.__class__.__name__, self.path, self.depth, self.destination, self.locktoken, self.overwrite)
+
 
 class HEADRequest(BaseRequest):
     pass
@@ -101,6 +104,8 @@ class PROPFINDRequest(BaseRequest):
             if "Excel" in self.headers.get("User-Agent"):
                 self.isexcel = True
 
+    def __str__(self):
+        return "%s: [Path: %s, Depth: %s, Destination: %s, Locktoken: %s, Overwrite: %s, isExcel: %s]" % (self.__class__.__name__, self.path, self.depth, self.destination, self.locktoken, self.overwrite, self.isexcel)
 
 
 class DELETERequest(BaseRequest):
@@ -128,6 +133,9 @@ class LOCKRequest(BaseRequest):
                 self.lockowner = re.search("<D:href>(.*)</D:href>", str(self.data)).group(1)
             except:
                 pass
+
+    def __str__(self):
+        return "%s: [Path: %s, Depth: %s, Destination: %s, Locktoken: %s, Overwrite: %s, Lockowner: %s]" % (self.__class__.__name__, self.path, self.depth, self.destination, self.locktoken, self.overwrite, self.lockowner)
 
 
 class UNLOCKRequest(BaseRequest):
