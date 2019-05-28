@@ -109,7 +109,7 @@ class DirectoryFilesystem(Filesystem):
                 allowed = True
 
         if not allowed:
-            self.log.error("Access to ", realpath, " restricted because not under ", self.basepath)
+            #self.log.error("Access to ", realpath, " restricted because not under ", self.basepath)
             raise PermissionError()
 
         return realpath
@@ -119,7 +119,7 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_content(%s)" % path)
+            #self.log.debug("get_content(%s)" % path)
 
             try:
                 with open(path, "rb") as f:
@@ -141,7 +141,7 @@ class DirectoryFilesystem(Filesystem):
         self.operator.begin(user)
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("set_content(%s)" % path)
+            #self.log.debug("set_content(%s)" % path)
             mode = "wb"
             if os.path.exists(path):
                 mode = "r+b"
@@ -164,7 +164,7 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("delete(%s)" % path)
+            #self.log.debug("delete(%s)" % path)
 
             try:
                 if os.path.isfile(path):
@@ -183,7 +183,7 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("create(%s)" % path)
+            #self.log.debug("create(%s)" % path)
 
             try:
                 if dir:
@@ -204,7 +204,7 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_props(%s)" % path)
+            #self.log.debug("get_props(%s)" % path)
 
             if not os.path.exists(path):
                 raise FileNotFoundError()
@@ -214,7 +214,7 @@ class DirectoryFilesystem(Filesystem):
             try:
                 for prop in props:
                     propdata[prop] = self._get_prop(path, prop, orig_path)
-                    self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
+                    #self.log.debug("\tProperty %s: %s" % (prop, propdata[prop]))
 
                 return propdata
             except PermissionError:
@@ -256,7 +256,7 @@ class DirectoryFilesystem(Filesystem):
                     return "application/octet-stream"
 
         elif prop == "D:name" or prop == "D:displayname":
-            print(orig_path)
+            #print(orig_path)
             return urllib.parse.quote(os.path.basename(orig_path.rstrip("/")), safe="/~.$")
 
         elif prop == "D:resourcetype":
@@ -291,7 +291,7 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             rpath = self.convert_local_to_real(path)
-            self.log.debug("get_children(%s)" % path)
+            #self.log.debug("get_children(%s)" % path)
 
             try:
                 if os.path.isdir(rpath):
@@ -313,7 +313,7 @@ class DirectoryFilesystem(Filesystem):
 
         try:
             path = self.convert_local_to_real(path)
-            self.log.debug("get_uid(%s)" % path)
+            #self.log.debug("get_uid(%s)" % path)
 
             return os.path.abspath(path)
 
@@ -399,10 +399,10 @@ class MultiplexFilesystem(Filesystem):
             if vfs in self.filesystems:
                 children = []
                 vfschildren = self.filesystems[vfs].get_children(user, "/" + remove_prefix(path, vfs))
-                self.log.debug("\tMultiplex children from %s" % (str(vfschildren)))
+                #self.log.debug("\tMultiplex children from %s" % (str(vfschildren)))
                 for cpath in vfschildren:
                     children.append(path_join(vfs, cpath))
-                self.log.debug("\tMultiplex children to %s" % (str(children)))
+                #self.log.debug("\tMultiplex children to %s" % (str(children)))
                 return children
             else:
                 return []
